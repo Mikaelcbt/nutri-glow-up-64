@@ -14,25 +14,37 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
 
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    // Check role for redirect
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .maybeSingle();
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
 
-    if (profile?.role === 'admin') {
-      navigate('/admin');
-    } else {
-      navigate('/app');
+      // Fetch profile for role-based redirect
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Erro ao buscar perfil:', profileError);
+      }
+
+      if (profile?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/app', { replace: true });
+      }
+    } catch (err) {
+      console.error('Erro no login:', err);
+      toast.error('Erro ao fazer login. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
