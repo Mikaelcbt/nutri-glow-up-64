@@ -3,322 +3,168 @@ import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Search, UserPlus, UserMinus, Loader2 } from 'lucide-react';
+import { Search, Loader2, Check, X, Calendar } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface Product { id: string; nome: string; }
-interface Association {
-  id: string;
-  user_id: string;
-  product_id: string;
-  status: string;
-  data_inicio: string;
-  data_fim: string | null;
-}
-
-interface FoundUser {
-  id: string;
-  nome_completo: string;
-}
-
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-    return error.message;
-  }
-
-  return fallback;
-};
+interface UserProfile { id: string; nome_completo: string; }
+interface Association { id: string; user_id: string; product_id: string; status: string; data_inicio: string; }
 
 export default function AdminAssociations() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [foundUsers, setFoundUsers] = useState<FoundUser[]>([]);
-  const [selectedUser, setSelectedUser] = useState<FoundUser | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [associations, setAssociations] = useState<Association[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState('');
-  const [pageError, setPageError] = useState('');
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [searching, setSearching] = useState(false);
-  const [granting, setGranting] = useState(false);
-  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
 
-  useEffect(() => {
-    void loadProducts();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
-  const loadProducts = async () => {
-    setLoadingProducts(true);
-    setPageError('');
-
-    try {
-      const { data, error } = await supabase.from('products').select('id, nome').order('nome');
-      if (error) throw error;
-      setProducts(data ?? []);
-    } catch (error) {
-      const message = getErrorMessage(error, 'Erro ao carregar produtos.');
-      console.error('Erro ao carregar produtos:', error);
-      setPageError(message);
-      setProducts([]);
-      toast.error(message);
-    } finally {
-      setLoadingProducts(false);
-    }
+  const loadAll = async () => {
+    setLoading(true);
+    const [{ data: prods }, { data: profiles }, { data: assocs }] = await Promise.all([
+      supabase.from('products').select('id, nome').order('nome'),
+      supabase.from('profiles').select('id, nome_completo').order('nome_completo'),
+      supabase.from('associacoes').select('id, user_id, product_id, status, data_inicio'),
+    ]);
+    setProducts(prods ?? []);
+    setUsers(profiles ?? []);
+    setAssociations(assocs ?? []);
+    setLoading(false);
   };
 
-  const searchUser = async () => {
-    if (!searchTerm.trim()) {
-      const message = 'Digite um nome ou e-mail para buscar.';
-      setPageError(message);
-      toast.error(message);
-      return;
-    }
+  const getAssoc = (userId: string, productId: string) =>
+    associations.find(a => a.user_id === userId && a.product_id === productId);
 
-    setSearching(true);
-    setPageError('');
+  const toggleAccess = async (userId: string, productId: string) => {
+    const key = `${userId}-${productId}`;
+    setToggling(key);
+    const existing = getAssoc(userId, productId);
 
     try {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, nome_completo')
-        .ilike('nome_completo', `%${searchTerm.trim()}%`)
-        .limit(10);
-
-      if (error) throw error;
-
-      if (!profiles?.length) {
-        setFoundUsers([]);
-        setSelectedUser(null);
-        setAssociations([]);
-        toast.error('Nenhum usuário encontrado.');
-        return;
-      }
-
-      const users: FoundUser[] = profiles.map((profile) => ({
-        id: profile.id,
-        nome_completo: profile.nome_completo || 'Sem nome',
-      }));
-
-      setFoundUsers(users);
-
-      if (users.length === 1) {
-        await selectUser(users[0]);
+      if (existing && existing.status === 'ativo') {
+        // Revoke
+        const { error } = await supabase.from('associacoes')
+          .update({ status: 'inativo', data_fim: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+        toast.success('Acesso revogado');
+      } else if (existing) {
+        // Reactivate
+        const { error } = await supabase.from('associacoes')
+          .update({ status: 'ativo', data_inicio: new Date().toISOString(), data_fim: null })
+          .eq('id', existing.id);
+        if (error) throw error;
+        toast.success('Acesso reativado');
       } else {
-        setSelectedUser(null);
-        setAssociations([]);
+        // Grant new
+        const { error } = await supabase.from('associacoes')
+          .insert({ user_id: userId, product_id: productId, status: 'ativo', data_inicio: new Date().toISOString() });
+        if (error) throw error;
+        toast.success('Acesso concedido');
       }
-    } catch (error) {
-      const message = getErrorMessage(error, 'Erro ao buscar usuário.');
-      console.error('Erro ao buscar usuário:', error);
-      setPageError(message);
-      setFoundUsers([]);
-      setSelectedUser(null);
-      setAssociations([]);
-      toast.error(message);
+      // Reload associations
+      const { data: assocs } = await supabase.from('associacoes').select('id, user_id, product_id, status, data_inicio');
+      setAssociations(assocs ?? []);
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao alterar acesso');
     } finally {
-      setSearching(false);
+      setToggling(null);
     }
   };
 
-  const selectUser = async (user: FoundUser) => {
-    setSelectedUser(user);
-    await loadUserAssociations(user.id);
-  };
+  const filtered = users.filter(u =>
+    u.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const loadUserAssociations = async (userId: string) => {
-    setPageError('');
-
-    try {
-      const { data, error } = await supabase
-        .from('associacoes')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      setAssociations(data ?? []);
-    } catch (error) {
-      const message = getErrorMessage(error, 'Erro ao carregar associações do usuário.');
-      console.error('Erro ao carregar associações:', error);
-      setPageError(message);
-      setAssociations([]);
-      toast.error(message);
-    }
-  };
-
-  const grantAccess = async () => {
-    if (!selectedUser || !selectedProduct) {
-      const message = 'Selecione um usuário e um produto antes de conceder acesso.';
-      setPageError(message);
-      toast.error(message);
-      return;
-    }
-
-    setGranting(true);
-    setPageError('');
-
-    try {
-      const { data, error } = await supabase
-        .from('associacoes')
-        .upsert({
-          user_id: selectedUser.id,
-          product_id: selectedProduct,
-          status: 'ativo',
-          data_inicio: new Date().toISOString(),
-          data_fim: null,
-        }, { onConflict: 'user_id,product_id' })
-        .select('id')
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!data) throw new Error('Não foi possível conceder acesso. Verifique a permissão de admin no RLS.');
-
-      toast.success('Acesso concedido com sucesso!');
-
-      // Try to send notification email via edge function
-      const productName = products.find(p => p.id === selectedProduct)?.nome || 'Programa';
-      try {
-        await supabase.functions.invoke('notify-access', {
-          body: {
-            user_name: selectedUser.nome_completo,
-            product_name: productName,
-          },
-        });
-      } catch {
-        // Edge function may not be deployed yet — silent fail
-        console.warn('Edge function notify-access not available');
-      }
-
-      await loadUserAssociations(selectedUser.id);
-    } catch (error) {
-      const message = getErrorMessage(error, 'Erro ao conceder acesso.');
-      console.error('Erro ao conceder acesso:', error);
-      setPageError(message);
-      toast.error(message);
-    } finally {
-      setGranting(false);
-    }
-  };
-
-  const revokeAccess = async (assocId: string) => {
-    if (!selectedUser) return;
-
-    setRevokingId(assocId);
-    setPageError('');
-
-    try {
-      const { data, error } = await supabase
-        .from('associacoes')
-        .update({ status: 'inativo', data_fim: new Date().toISOString() })
-        .eq('id', assocId)
-        .select('id')
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!data) throw new Error('Não foi possível revogar o acesso. Verifique a permissão de admin no RLS.');
-
-      toast.success('Acesso revogado com sucesso!');
-      await loadUserAssociations(selectedUser.id);
-    } catch (error) {
-      const message = getErrorMessage(error, 'Erro ao revogar acesso.');
-      console.error('Erro ao revogar acesso:', error);
-      setPageError(message);
-      toast.error(message);
-    } finally {
-      setRevokingId(null);
-    }
-  };
+  if (loading) {
+    return <AdminLayout><div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></AdminLayout>;
+  }
 
   return (
     <AdminLayout>
-      <h1 className="font-display text-3xl tracking-wide mb-8">ASSOCIAÇÕES</h1>
-
-      {pageError && (
-        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {pageError}
-        </div>
-      )}
+      <h1 className="font-display text-3xl tracking-wide mb-8">GESTÃO DE ACESSOS</h1>
 
       <div className="flex gap-3 mb-6">
-        <Input
-          placeholder="Buscar por nome ou e-mail..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && void searchUser()}
-          className="max-w-sm bg-secondary border-border"
-        />
-        <Button onClick={() => void searchUser()} disabled={searching}>
-          {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-          Buscar
-        </Button>
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-secondary border-border"
+          />
+        </div>
+        <span className="text-sm text-muted-foreground self-center">{filtered.length} usuários</span>
       </div>
 
-      {foundUsers.length > 1 && !selectedUser && (
-        <div className="mb-6 space-y-2">
-          <p className="text-sm text-muted-foreground">Selecione um usuário:</p>
-          {foundUsers.map((user) => (
-            <button
-              key={user.id}
-              onClick={() => void selectUser(user)}
-              className="w-full text-left rounded-lg border border-border bg-card p-3 hover:border-primary/50 transition-colors"
-            >
-              <span className="font-semibold">{user.nome_completo}</span>
-              <span className="block text-xs text-muted-foreground mt-1">ID: {user.id.slice(0, 8)}</span>
-            </button>
-          ))}
+      {/* Legend */}
+      <div className="flex gap-4 mb-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-primary" /> Ativo</span>
+        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-muted" /> Sem acesso</span>
+        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-destructive" /> Revogado</span>
+      </div>
+
+      <div className="rounded-2xl border border-border overflow-hidden">
+        {/* Header */}
+        <div className="grid gap-0 bg-secondary/80 p-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
+        >
+          <div>Usuário</div>
+          {products.map(p => <div key={p.id} className="text-center">{p.nome}</div>)}
         </div>
-      )}
 
-      {selectedUser && (
-        <div className="space-y-6">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="font-semibold">{selectedUser.nome_completo}</h3>
-            <p className="text-xs text-muted-foreground">ID: {selectedUser.id.slice(0, 8)}</p>
-          </div>
-
-          <div className="flex gap-3 items-end">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Conceder acesso a:</label>
-              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                <SelectTrigger className="w-64 bg-secondary border-border" disabled={loadingProducts}><SelectValue placeholder={loadingProducts ? 'Carregando produtos...' : 'Selecione um produto'} /></SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {products.map((product) => <SelectItem key={product.id} value={product.id}>{product.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={grantAccess} disabled={!selectedProduct || granting}>
-              {granting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-              Conceder
-            </Button>
-          </div>
-
-          <div>
-            <h4 className="font-display text-xl mb-3">ACESSOS ATUAIS</h4>
-            <div className="space-y-2">
-              {associations.map((association) => {
-                const productName = products.find((product) => product.id === association.product_id)?.nome || association.product_id;
-                const isRevoking = revokingId === association.id;
+        {/* Rows */}
+        <div className="divide-y divide-border">
+          {filtered.map((user, i) => (
+            <motion.div
+              key={user.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: Math.min(i * 0.02, 0.5) }}
+              className="grid gap-0 p-4 items-center hover:bg-secondary/30 transition-colors"
+              style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
+            >
+              <div>
+                <p className="text-sm font-semibold text-foreground truncate">{user.nome_completo || 'Sem nome'}</p>
+                <p className="text-[11px] text-muted-foreground">{user.id.slice(0, 8)}</p>
+              </div>
+              {products.map(prod => {
+                const assoc = getAssoc(user.id, prod.id);
+                const isActive = assoc?.status === 'ativo';
+                const isRevoked = assoc?.status === 'inativo';
+                const key = `${user.id}-${prod.id}`;
+                const isToggling = toggling === key;
 
                 return (
-                  <div key={association.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
-                    <div>
-                      <span className="font-semibold">{productName}</span>
-                      <span className={`ml-3 text-xs px-2 py-0.5 rounded ${association.status === 'ativo' ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'}`}>
-                        {association.status}
+                  <div key={prod.id} className="flex flex-col items-center gap-1">
+                    <button
+                      onClick={() => toggleAccess(user.id, prod.id)}
+                      disabled={isToggling}
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200 active:scale-90 ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
+                          : isRevoked
+                            ? 'bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {isToggling ? <Loader2 className="h-4 w-4 animate-spin" /> : isActive ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                    </button>
+                    {assoc?.data_inicio && isActive && (
+                      <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
+                        <Calendar className="h-2.5 w-2.5" />
+                        {new Date(assoc.data_inicio).toLocaleDateString('pt-BR')}
                       </span>
-                    </div>
-                    {association.status === 'ativo' && (
-                      <Button variant="ghost" size="sm" onClick={() => void revokeAccess(association.id)} disabled={isRevoking} className="text-destructive hover:text-destructive">
-                        {isRevoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserMinus className="h-4 w-4" />}
-                      </Button>
                     )}
                   </div>
                 );
               })}
-              {!associations.length && <p className="text-sm text-muted-foreground">Nenhum acesso.</p>}
-            </div>
-          </div>
+            </motion.div>
+          ))}
         </div>
-      )}
+      </div>
     </AdminLayout>
   );
 }
