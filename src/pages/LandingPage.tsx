@@ -42,9 +42,9 @@ export default function LandingPage() {
         {/* Background image */}
         <div className="absolute inset-0">
           <img
-            src="/images/hero-bg.jpg"
-            alt=""
-            className="w-full h-full object-cover"
+            src="/images/foto-nutricionista.jpeg"
+            alt="JP NutriCare — Nutricionista"
+            className="w-full h-full object-cover object-top"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-foreground/85 via-foreground/70 to-foreground/30" />
         </div>

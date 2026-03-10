@@ -18,6 +18,7 @@ import ProfilePage from "./pages/ProfilePage";
 import CommunityPage from "./pages/CommunityPage";
 import TransformationsPage from "./pages/TransformationsPage";
 import MaterialsPage from "./pages/MaterialsPage";
+import NutriIAPage from "./pages/NutriIAPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminModules from "./pages/admin/AdminModules";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/app/comunidade" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
             <Route path="/app/antes-e-depois" element={<ProtectedRoute><TransformationsPage /></ProtectedRoute>} />
             <Route path="/app/materiais" element={<ProtectedRoute><MaterialsPage /></ProtectedRoute>} />
+            <Route path="/app/nutricionista-ia" element={<ProtectedRoute><NutriIAPage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
