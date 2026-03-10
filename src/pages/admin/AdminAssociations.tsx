@@ -97,7 +97,6 @@ export default function AdminAssociations() {
       const users: FoundUser[] = profiles.map((profile) => ({
         id: profile.id,
         nome_completo: profile.nome_completo || 'Sem nome',
-        email: 'email' in profile ? profile.email : null,
       }));
 
       setFoundUsers(users);
