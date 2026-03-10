@@ -81,8 +81,8 @@ export default function AdminAssociations() {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, nome_completo, email')
-        .or(`nome_completo.ilike.%${searchTerm.trim()}%,email.ilike.%${searchTerm.trim()}%`)
+        .select('id, nome_completo')
+        .ilike('nome_completo', `%${searchTerm.trim()}%`)
         .limit(10);
 
       if (error) throw error;
