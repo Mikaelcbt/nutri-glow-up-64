@@ -28,6 +28,8 @@ import AdminAssociations from "./pages/admin/AdminAssociations";
 import AdminTransformations from "./pages/admin/AdminTransformations";
 import AdminMaterials from "./pages/admin/AdminMaterials";
 import AdminChallenges from "./pages/admin/AdminChallenges";
+import AdminChallengeDays from "./pages/admin/AdminChallengeDays";
+import AdminChallengeDayEdit from "./pages/admin/AdminChallengeDayEdit";
 import ChallengesPage from "./pages/ChallengesPage";
 import ChallengeDetailPage from "./pages/ChallengeDetailPage";
 import ChallengeDayPage from "./pages/ChallengeDayPage";
@@ -74,6 +76,8 @@ const App = () => (
             <Route path="/admin/transformacoes" element={<AdminRoute><AdminTransformations /></AdminRoute>} />
             <Route path="/admin/materiais" element={<AdminRoute><AdminMaterials /></AdminRoute>} />
             <Route path="/admin/desafios" element={<AdminRoute><AdminChallenges /></AdminRoute>} />
+            <Route path="/admin/desafios/:id/dias" element={<AdminRoute><AdminChallengeDays /></AdminRoute>} />
+            <Route path="/admin/desafios/:id/dias/:numero" element={<AdminRoute><AdminChallengeDayEdit /></AdminRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
