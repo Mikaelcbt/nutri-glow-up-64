@@ -106,7 +106,7 @@ export default function AdminModules() {
   const openNew = () => {
     setEditing(null);
     setPageError('');
-    setForm({ titulo: '', descricao: '', ordem: modules.length + 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT });
+    setForm({ titulo: '', descricao: '', ordem: modules.length + 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT, imagem_url: '' });
     setOpen(true);
   };
 
