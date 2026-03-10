@@ -38,7 +38,7 @@ export default function AppHome() {
   const animatedModules = useAnimatedNumber(moduleStats.modules);
   const animatedLessons = useAnimatedNumber(moduleStats.lessons);
 
-  useEffect(() => { if (user) loadData(); }, [user]);
+  useEffect(() => { if (user) { console.log('[AppHome] user ready, loading data...', user.id); loadData(); } }, [user]);
 
   const loadData = async () => {
     if (!user) return;
