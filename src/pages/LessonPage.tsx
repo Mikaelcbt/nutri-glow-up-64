@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -23,6 +23,7 @@ export default function LessonPage() {
   const { user } = useAuth();
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [marking, setMarking] = useState(false);
   const [siblings, setSiblings] = useState<{ prev: string | null; next: string | null }>({ prev: null, next: null });
 
   useEffect(() => {
@@ -30,11 +31,12 @@ export default function LessonPage() {
   }, [id, user]);
 
   const loadLesson = async () => {
-    const { data } = await supabase.from('lessons').select('*').eq('id', id).maybeSingle();
+    setLesson(null);
+    const { data, error } = await supabase.from('lessons').select('*').eq('id', id).maybeSingle();
+    if (error) { toast.error('Erro ao carregar aula: ' + error.message); return; }
     if (!data) return;
     setLesson(data);
 
-    // Check completion
     if (user) {
       const { data: prog } = await supabase
         .from('rastreamento_progresso')
@@ -43,9 +45,17 @@ export default function LessonPage() {
         .eq('lesson_id', data.id)
         .maybeSingle();
       setCompleted(prog?.concluido || false);
+
+      // Create progress entry if doesn't exist (marks as "started")
+      if (!prog) {
+        await supabase.from('rastreamento_progresso').upsert({
+          user_id: user.id,
+          lesson_id: data.id,
+          concluido: false,
+        }, { onConflict: 'user_id,lesson_id' });
+      }
     }
 
-    // Load siblings
     const { data: allLessons } = await supabase
       .from('lessons')
       .select('id, ordem')
@@ -63,21 +73,26 @@ export default function LessonPage() {
 
   const markComplete = async () => {
     if (!user || !lesson) return;
-    const { error } = await supabase
-      .from('rastreamento_progresso')
-      .upsert({
-        user_id: user.id,
-        lesson_id: lesson.id,
-        concluido: true,
-        concluido_em: new Date().toISOString(),
-      }, { onConflict: 'user_id,lesson_id' });
+    setMarking(true);
+    try {
+      const { error } = await supabase
+        .from('rastreamento_progresso')
+        .upsert({
+          user_id: user.id,
+          lesson_id: lesson.id,
+          concluido: true,
+          concluido_em: new Date().toISOString(),
+        }, { onConflict: 'user_id,lesson_id' });
 
-    if (error) {
-      toast.error('Erro ao salvar progresso');
-      return;
+      if (error) {
+        toast.error('Erro ao salvar progresso: ' + error.message);
+        return;
+      }
+      setCompleted(true);
+      toast.success('Aula concluída! 🎉');
+    } finally {
+      setMarking(false);
     }
-    setCompleted(true);
-    toast.success('Aula concluída!');
   };
 
   if (!lesson) {
@@ -95,7 +110,7 @@ export default function LessonPage() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         {/* Video Player */}
         {lesson.video_url && (
-          <div className="aspect-video w-full overflow-hidden rounded-lg bg-card mb-8">
+          <div className="aspect-video w-full overflow-hidden rounded-xl bg-card mb-8 shadow-lg shadow-black/20">
             <iframe
               src={lesson.video_url}
               className="h-full w-full"
@@ -113,17 +128,21 @@ export default function LessonPage() {
           </div>
           <Button
             onClick={markComplete}
-            disabled={completed}
-            className={`flex-shrink-0 font-display tracking-wider ${completed ? 'bg-primary/20 text-primary' : ''}`}
+            disabled={completed || marking}
+            className={`flex-shrink-0 font-display tracking-wider ${completed ? 'bg-primary/20 text-primary border border-primary/30' : ''}`}
+            variant={completed ? 'outline' : 'default'}
           >
-            <CheckCircle className="mr-2 h-4 w-4" />
-            {completed ? 'CONCLUÍDA' : 'MARCAR COMO CONCLUÍDA'}
+            {marking ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> SALVANDO...</>
+            ) : (
+              <><CheckCircle className="mr-2 h-4 w-4" /> {completed ? 'CONCLUÍDA ✓' : 'MARCAR COMO CONCLUÍDA'}</>
+            )}
           </Button>
         </div>
 
         {/* Markdown Content */}
         {lesson.conteudo && (
-          <div className="prose prose-invert max-w-none mb-12">
+          <div className="prose prose-invert max-w-none mb-12 prose-headings:font-display prose-a:text-primary">
             <ReactMarkdown>{lesson.conteudo}</ReactMarkdown>
           </div>
         )}
