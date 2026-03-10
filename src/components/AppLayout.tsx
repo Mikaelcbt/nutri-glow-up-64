@@ -1,49 +1,107 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, User, LogOut } from 'lucide-react';
+import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+
+const navItems = [
+  { title: 'Início', path: '/app', icon: Home },
+  { title: 'Comunidade', path: '/app/comunidade', icon: Users },
+  { title: 'Antes & Depois', path: '/app/antes-e-depois', icon: ArrowLeftRight },
+  { title: 'Materiais', path: '/app/materiais', icon: FileText },
+  { title: 'Perfil', path: '/app/perfil', icon: User },
+];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const initial = profile?.nome_completo?.charAt(0)?.toUpperCase() || 'U';
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Nav */}
-      <nav className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/50 bg-background/90 backdrop-blur-md px-8 md:px-16">
-        <Link to="/app" className="font-display text-2xl tracking-wide text-primary">
-          JP NUTRICARE
-        </Link>
+    <div className="min-h-screen flex bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
 
-        <div className="flex items-center gap-4">
-          <Link
-            to="/app"
-            className={`text-sm transition-colors hover:text-foreground ${
-              location.pathname === '/app' ? 'text-foreground' : 'text-muted-foreground'
-            }`}
-          >
-            <Home className="h-4 w-4" />
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        {/* Logo */}
+        <div className="flex h-16 items-center px-6 border-b border-border">
+          <Link to="/app" className="font-display text-2xl font-semibold text-foreground tracking-wide">
+            JP NutriCare
           </Link>
-          <Link
-            to="/app/perfil"
-            className={`text-sm transition-colors hover:text-foreground ${
-              location.pathname === '/app/perfil' ? 'text-foreground' : 'text-muted-foreground'
-            }`}
-          >
-            <User className="h-4 w-4" />
-          </Link>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </Link>
+            );
+          })}
           {profile?.role === 'admin' && (
-            <Link to="/admin" className="text-xs text-primary hover:underline">
-              Admin
+            <Link
+              to="/admin"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-200"
+            >
+              <Shield className="h-4 w-4" />
+              Painel Admin
             </Link>
           )}
-          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground hover:text-foreground">
-            <LogOut className="h-4 w-4" />
+        </nav>
+
+        {/* User footer */}
+        <div className="border-t border-border p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
+              {initial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{profile?.nome_completo || 'Usuário'}</p>
+              <p className="text-xs text-muted-foreground truncate">{profile?.role}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={signOut}
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sair
           </Button>
         </div>
-      </nav>
+      </aside>
 
-      <main>{children}</main>
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile header */}
+        <header className="flex h-14 items-center border-b border-border px-4 lg:hidden bg-card">
+          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)}>
+            <Menu className="h-5 w-5" />
+          </Button>
+          <span className="ml-3 font-display text-lg font-semibold text-foreground">JP NutriCare</span>
+        </header>
+
+        <main className="flex-1">{children}</main>
+      </div>
     </div>
   );
 }

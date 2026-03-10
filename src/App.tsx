@@ -12,11 +12,16 @@ import AppHome from "./pages/AppHome";
 import ProgramPage from "./pages/ProgramPage";
 import LessonPage from "./pages/LessonPage";
 import ProfilePage from "./pages/ProfilePage";
+import CommunityPage from "./pages/CommunityPage";
+import TransformationsPage from "./pages/TransformationsPage";
+import MaterialsPage from "./pages/MaterialsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminModules from "./pages/admin/AdminModules";
 import AdminLessons from "./pages/admin/AdminLessons";
 import AdminAssociations from "./pages/admin/AdminAssociations";
+import AdminTransformations from "./pages/admin/AdminTransformations";
+import AdminMaterials from "./pages/admin/AdminMaterials";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +44,9 @@ const App = () => (
             <Route path="/app/programa/:slug" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
             <Route path="/app/aula/:id" element={<ProtectedRoute><LessonPage /></ProtectedRoute>} />
             <Route path="/app/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/app/comunidade" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
+            <Route path="/app/antes-e-depois" element={<ProtectedRoute><TransformationsPage /></ProtectedRoute>} />
+            <Route path="/app/materiais" element={<ProtectedRoute><MaterialsPage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -46,6 +54,8 @@ const App = () => (
             <Route path="/admin/modulos" element={<AdminRoute><AdminModules /></AdminRoute>} />
             <Route path="/admin/aulas" element={<AdminRoute><AdminLessons /></AdminRoute>} />
             <Route path="/admin/associacoes" element={<AdminRoute><AdminAssociations /></AdminRoute>} />
+            <Route path="/admin/transformacoes" element={<AdminRoute><AdminTransformations /></AdminRoute>} />
+            <Route path="/admin/materiais" element={<AdminRoute><AdminMaterials /></AdminRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
