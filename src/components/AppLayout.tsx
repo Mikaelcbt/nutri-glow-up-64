@@ -2,6 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NutriChatFloat from '@/components/NutriChatFloat';
@@ -89,9 +90,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* User footer */}
         <div className="border-t border-border p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-              {initial}
-            </div>
+            <Avatar className="h-9 w-9">
+              {profile?.avatar_url ? (
+                <AvatarImage src={profile.avatar_url} alt={profile.nome_completo || ''} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                {initial}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{profile?.nome_completo || 'Usuário'}</p>
               <p className="text-xs text-muted-foreground truncate">{profile?.role}</p>
@@ -119,7 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="ml-3 font-display text-lg font-semibold text-foreground">JP NutriCare</span>
         </header>
 
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 scroll-smooth">{children}</main>
         <NutriChatFloat />
       </div>
     </div>
