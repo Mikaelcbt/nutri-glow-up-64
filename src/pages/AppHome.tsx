@@ -38,23 +38,35 @@ export default function AppHome() {
   const animatedModules = useAnimatedNumber(moduleStats.modules);
   const animatedLessons = useAnimatedNumber(moduleStats.lessons);
 
-  useEffect(() => { if (user) loadData(); }, [user]);
+  useEffect(() => { if (user) { console.log('[AppHome] user ready, loading data...', user.id); loadData(); } }, [user]);
 
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      // All active products
-      const { data: products } = await supabase
+      // All active products — visible to all authenticated users
+      const { data: products, error: prodErr } = await supabase
         .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
+
+      console.log('[AppHome] products query:', { products, error: prodErr, userId: user.id });
+
+      if (prodErr) {
+        console.error('[AppHome] Erro ao buscar produtos:', prodErr);
+        setAllProducts([]);
+        setLoading(false);
+        return;
+      }
 
       if (!products?.length) { setAllProducts([]); setLoading(false); return; }
       setAllProducts(products);
 
       // User associations
-      const { data: assocs } = await supabase
+      const { data: assocs, error: assocErr } = await supabase
         .from('associacoes').select('product_id, status')
         .eq('user_id', user.id).eq('status', 'ativo');
+
+      if (assocErr) console.error('[AppHome] Erro ao buscar associações:', assocErr);
+      console.log('[AppHome] associations:', { assocs });
 
       const map: Record<string, boolean> = {};
       (assocs ?? []).forEach(a => { map[a.product_id] = true; });
