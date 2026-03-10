@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -20,11 +21,9 @@ export default function Login() {
 
       if (error) {
         toast.error(error.message);
-        setLoading(false);
         return;
       }
 
-      // Fetch profile for role-based redirect
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
@@ -57,35 +56,36 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <Input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-12 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
-              required
-            />
-          </div>
-          <div>
-            <Input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
-              required
-            />
-          </div>
+          <Input
+            type="email"
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-12 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+            required
+          />
+          <Input
+            type="password"
+            placeholder="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-12 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+            required
+          />
           <Button type="submit" className="h-12 w-full font-display text-lg tracking-wider" disabled={loading}>
-            {loading ? 'ENTRANDO...' : 'ENTRAR'}
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> ENTRANDO...</> : 'ENTRAR'}
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
-          Não tem conta?{' '}
-          <Link to="/register" className="text-primary hover:underline">Criar conta</Link>
-        </p>
+        <div className="text-center space-y-2">
+          <Link to="/forgot-password" className="text-sm text-primary hover:underline block">
+            Esqueceu sua senha?
+          </Link>
+          <p className="text-sm text-muted-foreground">
+            Não tem conta?{' '}
+            <Link to="/register" className="text-primary hover:underline">Criar conta</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

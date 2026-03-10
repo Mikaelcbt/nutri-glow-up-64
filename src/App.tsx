@@ -6,6 +6,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute, AdminRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import AppHome from "./pages/AppHome";
 import ProgramPage from "./pages/ProgramPage";
 import LessonPage from "./pages/LessonPage";
@@ -28,6 +30,8 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<Login />} />
 
             {/* Protected app routes */}

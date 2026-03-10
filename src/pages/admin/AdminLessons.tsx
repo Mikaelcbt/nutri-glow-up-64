@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 
 interface Lesson {
   id: string;
@@ -31,17 +32,23 @@ export default function AdminLessons() {
   const [selectedModule, setSelectedModule] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Lesson | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [form, setForm] = useState({
     titulo: '', descricao: '', conteudo: '', video_url: '', ordem: 1, is_preview: false,
   });
 
   useEffect(() => {
-    supabase.from('products').select('id, nome').order('nome').then(({ data }) => { if (data) setProducts(data); });
+    supabase.from('products').select('id, nome').order('nome').then(({ data, error }) => {
+      if (error) toast.error('Erro: ' + error.message);
+      if (data) setProducts(data);
+    });
   }, []);
 
   useEffect(() => {
     if (selectedProduct) {
-      supabase.from('modules').select('id, titulo, product_id').eq('product_id', selectedProduct).order('ordem').then(({ data }) => {
+      supabase.from('modules').select('id, titulo, product_id').eq('product_id', selectedProduct).order('ordem').then(({ data, error }) => {
+        if (error) toast.error('Erro: ' + error.message);
         if (data) setModules(data);
         setSelectedModule('');
         setLessons([]);
@@ -54,7 +61,8 @@ export default function AdminLessons() {
   }, [selectedModule]);
 
   const loadLessons = async () => {
-    const { data } = await supabase.from('lessons').select('*').eq('module_id', selectedModule).order('ordem');
+    const { data, error } = await supabase.from('lessons').select('*').eq('module_id', selectedModule).order('ordem');
+    if (error) { toast.error('Erro: ' + error.message); return; }
     if (data) setLessons(data);
   };
 
@@ -71,25 +79,30 @@ export default function AdminLessons() {
   };
 
   const save = async () => {
-    const payload = { ...form, module_id: selectedModule };
-    if (editing) {
-      const { error } = await supabase.from('lessons').update(payload).eq('id', editing.id);
-      if (error) { toast.error(error.message); return; }
-      toast.success('Aula atualizada');
-    } else {
-      const { error } = await supabase.from('lessons').insert(payload);
-      if (error) { toast.error(error.message); return; }
-      toast.success('Aula criada');
-    }
-    setOpen(false);
-    loadLessons();
+    if (!form.titulo.trim()) { toast.error('Título é obrigatório'); return; }
+    setSaving(true);
+    try {
+      const payload = { ...form, module_id: selectedModule };
+      if (editing) {
+        const { error } = await supabase.from('lessons').update(payload).eq('id', editing.id);
+        if (error) { toast.error('Erro: ' + error.message); return; }
+        toast.success('Aula atualizada!');
+      } else {
+        const { error } = await supabase.from('lessons').insert(payload);
+        if (error) { toast.error('Erro: ' + error.message); return; }
+        toast.success('Aula criada!');
+      }
+      setOpen(false);
+      await loadLessons();
+    } finally { setSaving(false); }
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Tem certeza?')) return;
-    await supabase.from('lessons').delete().eq('id', id);
-    toast.success('Aula removida');
-    loadLessons();
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    const { error } = await supabase.from('lessons').delete().eq('id', deleting);
+    if (error) toast.error('Erro: ' + error.message);
+    else { toast.success('Aula removida!'); await loadLessons(); }
+    setDeleting(null);
   };
 
   return (
@@ -116,7 +129,7 @@ export default function AdminLessons() {
 
       <div className="space-y-3">
         {lessons.map((l) => (
-          <div key={l.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+          <div key={l.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors">
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground w-6">{l.ordem}</span>
               <div>
@@ -126,17 +139,18 @@ export default function AdminLessons() {
             </div>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => remove(l.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => setDeleting(l.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
             </div>
           </div>
         ))}
-        {selectedModule && !lessons.length && <p className="text-muted-foreground">Nenhuma aula cadastrada.</p>}
+        {selectedModule && !lessons.length && <p className="text-muted-foreground text-center py-12">Nenhuma aula cadastrada.</p>}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">{editing ? 'EDITAR AULA' : 'NOVA AULA'}</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Preencha os dados da aula.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input placeholder="Título" value={form.titulo} onChange={(e) => setForm(f => ({ ...f, titulo: e.target.value }))} className="bg-secondary border-border" />
@@ -148,10 +162,25 @@ export default function AdminLessons() {
               <input type="checkbox" checked={form.is_preview} onChange={(e) => setForm(f => ({ ...f, is_preview: e.target.checked }))} />
               Aula de preview (gratuita)
             </label>
-            <Button onClick={save} className="w-full font-display tracking-wider">SALVAR</Button>
+            <Button onClick={save} disabled={saving} className="w-full font-display tracking-wider">
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> SALVANDO...</> : 'SALVAR'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir esta aula?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
