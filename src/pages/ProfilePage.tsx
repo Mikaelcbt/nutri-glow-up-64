@@ -29,8 +29,8 @@ export default function ProfilePage() {
   const loadAll = async () => {
     setLoading(true);
     setAvatarUrl(profile?.avatar_url || null);
-    if (profile?.created_at) {
-      setDaysSince(Math.floor((Date.now() - new Date(profile.created_at).getTime()) / 86400000));
+    if (profile?.criado_em) {
+      setDaysSince(Math.floor((Date.now() - new Date(profile.criado_em).getTime()) / 86400000));
     }
     await Promise.all([loadProgress(), loadHistory(), loadBadges()]);
     setLoading(false);
