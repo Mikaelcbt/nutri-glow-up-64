@@ -82,6 +82,18 @@ export default function LessonPage() {
     );
   }
 
+  const getEmbedUrl = (url: string) => {
+    // YouTube watch URL → embed
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+    // Vimeo
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    return url;
+  };
+
+  const isDirectVideo = (url: string) => /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
+
   return (
     <AppLayout>
       <div className="flex flex-col lg:flex-row">
@@ -89,8 +101,12 @@ export default function LessonPage() {
         <div className="flex-1 max-w-4xl mx-auto px-4 py-8 lg:px-8">
           {lesson.video_url && (
             <div className="aspect-video w-full overflow-hidden rounded-2xl bg-card mb-8 shadow-soft border border-border">
-              <iframe src={lesson.video_url} className="h-full w-full" allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture" />
+              {isDirectVideo(lesson.video_url) ? (
+                <video src={lesson.video_url} controls className="h-full w-full" />
+              ) : (
+                <iframe src={getEmbedUrl(lesson.video_url)} className="h-full w-full" allowFullScreen
+                  allow="autoplay; fullscreen; picture-in-picture" />
+              )}
             </div>
           )}
 
