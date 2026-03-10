@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
@@ -32,44 +32,110 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const handledSessionKeyRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    setProfile(data);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao carregar perfil:', error);
+        setProfile(null);
+        return null;
+      }
+
+      setProfile(data);
+      return data;
+    } catch (error) {
+      console.error('Erro inesperado ao carregar perfil:', error);
+      setProfile(null);
+      return null;
+    }
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
+    let isMounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        fetchProfile(session.user.id);
+    const applySession = async (nextSession: Session | null, force = false) => {
+      const sessionKey = nextSession?.access_token ?? null;
+
+      if (!force && handledSessionKeyRef.current === sessionKey) {
+        if (isMounted) setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      handledSessionKeyRef.current = sessionKey;
+
+      if (!isMounted) return;
+      setSession(nextSession);
+
+      if (nextSession?.user) {
+        await fetchProfile(nextSession.user.id);
+      } else if (isMounted) {
+        setProfile(null);
+      }
+
+      if (isMounted) setLoading(false);
+    };
+
+    const init = async () => {
+      try {
+        const {
+          data: { session: initialSession },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Erro ao obter sessão:', error);
+          if (isMounted) {
+            setSession(null);
+            setProfile(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        await applySession(initialSession, true);
+      } catch (error) {
+        console.error('Erro inesperado ao inicializar autenticação:', error);
+        if (isMounted) {
+          setSession(null);
+          setProfile(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      void applySession(nextSession);
     });
 
-    return () => subscription.unsubscribe();
+    void init();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setProfile(null);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Erro ao sair:', error);
+      }
+    } finally {
+      handledSessionKeyRef.current = null;
+      setSession(null);
+      setProfile(null);
+      setLoading(false);
+    }
   };
 
   return (

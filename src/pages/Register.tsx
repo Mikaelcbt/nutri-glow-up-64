@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -16,24 +17,29 @@ export default function Register() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { nome_completo: nomeCompleto },
-        emailRedirectTo: window.location.origin + '/app',
-      },
-    });
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { nome_completo: nomeCompleto },
+          emailRedirectTo: window.location.origin + '/app',
+        },
+      });
 
-    setLoading(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
 
-    if (error) {
-      toast.error(error.message);
-      return;
+      toast.success('Conta criada! Verifique seu e-mail ou faça login.');
+      navigate('/app');
+    } catch (error) {
+      console.error('Erro ao criar conta:', error);
+      toast.error('Erro ao criar conta. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-
-    toast.success('Conta criada! Verifique seu e-mail ou faça login.');
-    navigate('/app');
   };
 
   return (
@@ -71,7 +77,7 @@ export default function Register() {
             required
           />
           <Button type="submit" className="h-12 w-full font-display text-lg tracking-wider" disabled={loading}>
-            {loading ? 'CRIANDO CONTA...' : 'CRIAR CONTA'}
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> CRIANDO CONTA...</> : 'CRIAR CONTA'}
           </Button>
         </form>
 
