@@ -10,7 +10,7 @@
 
 @layer base {
   :root {
-    --background: 48 20% 97%;
+    --background: 100 11% 97%;
     --foreground: 50 7% 9%;
 
     --card: 0 0% 100%;
@@ -19,13 +19,13 @@
     --popover: 0 0% 100%;
     --popover-foreground: 50 7% 9%;
 
-    --primary: 142 72% 46%;
+    --primary: 142 72% 37%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 10% 95%;
+    --secondary: 100 10% 95%;
     --secondary-foreground: 50 7% 9%;
 
-    --muted: 40 10% 95%;
+    --muted: 100 10% 95%;
     --muted-foreground: 50 4% 40%;
 
     --accent: 142 76% 93%;
@@ -34,26 +34,29 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 10% 90%;
-    --input: 40 10% 90%;
-    --ring: 142 72% 46%;
+    --border: 100 10% 90%;
+    --input: 100 10% 90%;
+    --ring: 142 72% 37%;
 
     --radius: 1rem;
 
+    --gold: 43 72% 52%;
+
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 50 7% 9%;
-    --sidebar-primary: 142 72% 46%;
+    --sidebar-primary: 142 72% 37%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 142 76% 93%;
     --sidebar-accent-foreground: 142 72% 29%;
-    --sidebar-border: 40 10% 90%;
-    --sidebar-ring: 142 72% 46%;
+    --sidebar-border: 100 10% 90%;
+    --sidebar-ring: 142 72% 37%;
 
     --font-display: 'Cormorant Garamond', serif;
     --font-body: 'DM Sans', sans-serif;
 
-    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.06);
-    --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.04);
+    --shadow-soft: 0 8px 40px rgba(22, 163, 74, 0.08);
+    --shadow-card: 0 2px 16px rgba(22, 163, 74, 0.05);
+    --shadow-premium: 0 8px 40px rgba(22, 163, 74, 0.08);
   }
 }
 
@@ -72,23 +75,166 @@
   }
 }
 
-/* Custom scrollbar */
+/* ── Custom scrollbar ── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(40 10% 95%);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(40 10% 82%);
-  border-radius: 3px;
+  background: hsl(142 72% 37% / 0.25);
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(40 10% 70%);
+  background: hsl(142 72% 37% / 0.45);
 }
 
-/* Rich content styles for challenge day pages */
+/* ── Text selection ── */
+::selection {
+  background: hsl(142 76% 93%);
+  color: hsl(142 72% 29%);
+}
+
+/* ── Shimmer skeleton ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(100 10% 95%) 25%,
+    hsl(142 76% 93% / 0.5) 50%,
+    hsl(100 10% 95%) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ── Glassmorphism card ── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px rgba(22, 163, 74, 0.08);
+}
+
+/* ── Floating label for inputs ── */
+.floating-label-group {
+  position: relative;
+}
+.floating-label-group input:focus ~ label,
+.floating-label-group input:not(:placeholder-shown) ~ label,
+.floating-label-group textarea:focus ~ label,
+.floating-label-group textarea:not(:placeholder-shown) ~ label {
+  transform: translateY(-1.4rem) scale(0.85);
+  color: hsl(142 72% 37%);
+}
+.floating-label-group label {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.65rem;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  color: hsl(50 4% 40%);
+  font-size: 0.875rem;
+}
+
+/* ── Green focus ring on inputs ── */
+input:focus, textarea:focus, select:focus {
+  border-color: hsl(142 72% 37%) !important;
+  box-shadow: 0 0 0 2px hsl(142 72% 37% / 0.15) !important;
+}
+
+/* ── Ripple effect ── */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(0);
+  pointer-events: none;
+}
+.btn-ripple:active::after {
+  animation: ripple 0.5s ease-out;
+}
+
+/* ── Micro bounce for sidebar icons ── */
+@keyframes micro-bounce {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-3px); }
+  60% { transform: translateY(-1px); }
+}
+.icon-bounce:hover .nav-icon {
+  animation: micro-bounce 0.4s ease;
+}
+
+/* ── Logo shimmer ── */
+@keyframes logo-shimmer {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+.logo-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(142 72% 37%) 0%,
+    hsl(142 76% 55%) 50%,
+    hsl(142 72% 37%) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: logo-shimmer 3s ease-in-out infinite;
+}
+
+/* ── Floating particles ── */
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
+  25% { transform: translateY(-30px) translateX(10px); opacity: 0.6; }
+  50% { transform: translateY(-50px) translateX(-5px); opacity: 0.4; }
+  75% { transform: translateY(-20px) translateX(15px); opacity: 0.5; }
+}
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: hsl(142 72% 37% / 0.3);
+  animation: float-particle 6s ease-in-out infinite;
+}
+
+/* ── Stagger animation helper ── */
+@keyframes stagger-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stagger-item {
+  animation: stagger-up 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* ── Toast override ── */
+[data-sonner-toast] {
+  border-left: 3px solid hsl(142 72% 37%) !important;
+}
+
+/* ── Rich content styles for challenge day pages ── */
 .rich-content {
   font-family: 'DM Sans', sans-serif;
   color: hsl(var(--muted-foreground));
@@ -96,14 +242,14 @@
 .rich-content h2 {
   font-size: 1rem;
   font-weight: 600;
-  color: #22C55E;
+  color: #16A34A;
   margin-top: 0.75rem;
   margin-bottom: 0.25rem;
 }
 .rich-content h3 {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #22C55E;
+  color: #16A34A;
   margin-top: 0.5rem;
   margin-bottom: 0.25rem;
 }
@@ -113,7 +259,7 @@
   margin: 0.25rem 0;
 }
 .rich-content ul li::marker {
-  color: #22C55E;
+  color: #16A34A;
 }
 .rich-content ol {
   list-style: decimal;
@@ -121,7 +267,7 @@
   margin: 0.25rem 0;
 }
 .rich-content ol li::marker {
-  color: #22C55E;
+  color: #16A34A;
 }
 .rich-content p {
   margin: 0.25rem 0;
@@ -135,7 +281,7 @@
   color: hsl(var(--foreground));
 }
 
-/* TipTap editor styles */
+/* ── TipTap editor styles ── */
 .tiptap {
   outline: none;
 }
