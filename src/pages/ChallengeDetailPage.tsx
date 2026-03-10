@@ -143,6 +143,76 @@ export default function ChallengeDetailPage() {
             {days.map((day, i) => {
               const completed = completedDays.has(day.numero_dia);
               const isCurrent = currentDay?.id === day.id;
+              const isLocked = !day.liberado;
+
+              const cardBg = day.imagem_url ? null : (
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/8 to-accent/10" />
+              );
+              const cardImg = day.imagem_url ? (
+                <div className="absolute inset-0">
+                  <img src={day.imagem_url} alt={day.titulo} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                </div>
+              ) : null;
+
+              const textColor = day.imagem_url ? 'text-white' : 'text-foreground';
+              const subTextColor = day.imagem_url ? 'text-white/80' : 'text-muted-foreground';
+
+              const inner = (
+                <>
+                  {cardImg}
+                  {cardBg}
+
+                  {/* Border overlay */}
+                  <div className={`absolute inset-0 rounded-2xl border-2 transition-all duration-300 ${
+                    isLocked
+                      ? 'border-border/30 group-hover:border-border/50'
+                      : 'border-border/30 group-hover:border-[#22C55E] group-hover:shadow-[0_8px_30px_-8px_rgba(34,197,94,0.3)]'
+                  }`} />
+
+                  {/* Completed badge — always visible */}
+                  {completed && (
+                    <div className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-[#22C55E] text-white shadow-md">
+                      <Check className="h-4 w-4" strokeWidth={3} />
+                    </div>
+                  )}
+
+                  {/* Locked hover overlay */}
+                  {isLocked && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/0 group-hover:bg-black/50 transition-all duration-300 rounded-2xl">
+                      <Lock className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <span className="text-white text-xs font-medium mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        Conteúdo bloqueado
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Unlocked hover overlay — CTA button */}
+                  {!isLocked && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl">
+                      <span className="bg-[#22C55E] text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg">
+                        {completed ? 'Ver novamente →' : 'Acessar dia →'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Main content */}
+                  <div className="relative flex flex-col items-center justify-center h-full p-4 text-center z-10 pointer-events-none">
+                    <span className={`text-4xl font-bold leading-none ${textColor}`}>
+                      {day.numero_dia}
+                    </span>
+                    <span className={`text-xs mt-2 line-clamp-2 font-medium ${subTextColor}`}>
+                      {day.titulo || `Dia ${day.numero_dia}`}
+                    </span>
+                    {isCurrent && !isLocked && (
+                      <span className={`text-[10px] font-semibold mt-2 ${day.imagem_url ? 'text-white' : 'text-primary'}`}>
+                        ▶ Atual
+                      </span>
+                    )}
+                  </div>
+                </>
+              );
+
               return (
                 <motion.div
                   key={day.id}
@@ -151,76 +221,21 @@ export default function ChallengeDetailPage() {
                   transition={{ delay: i * 0.04 }}
                   className="flex-shrink-0"
                 >
-                  {day.liberado ? (
+                  {isLocked ? (
+                    <div
+                      className="group relative overflow-hidden rounded-2xl cursor-not-allowed transition-all duration-300"
+                      style={{ width: '180px', height: '240px' }}
+                    >
+                      {inner}
+                    </div>
+                  ) : (
                     <Link
                       to={`/app/desafios/${challenge.id}/dia/${day.numero_dia}`}
-                      className="group relative block overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/15 hover:scale-[1.03]"
+                      className="group relative block overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:scale-[1.03]"
                       style={{ width: '180px', height: '240px' }}
                     >
-                      {/* Background */}
-                      {day.imagem_url ? (
-                        <div className="absolute inset-0">
-                          <img src={day.imagem_url} alt={day.titulo} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                        </div>
-                      ) : (
-                        <div className={`absolute inset-0 ${
-                          completed
-                            ? 'bg-gradient-to-br from-primary/20 to-primary/10'
-                            : isCurrent
-                              ? 'bg-gradient-to-br from-primary/15 to-accent/20'
-                              : 'bg-gradient-to-br from-primary/10 to-primary/5'
-                        }`} />
-                      )}
-
-                      {/* Border */}
-                      <div className={`absolute inset-0 rounded-2xl border-2 transition-colors duration-300 ${
-                        completed
-                          ? 'border-primary'
-                          : isCurrent
-                            ? 'border-primary shadow-md ring-2 ring-primary/20'
-                            : 'border-border/50 group-hover:border-primary/50'
-                      }`} />
-
-                      {/* Completed check */}
-                      {completed && (
-                        <div className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow-md">
-                          <Check className="h-4 w-4" strokeWidth={3} />
-                        </div>
-                      )}
-
-                      {/* Content */}
-                      <div className="relative flex flex-col items-center justify-center h-full p-4 text-center">
-                        <span className={`text-4xl font-bold leading-none ${day.imagem_url ? 'text-white' : 'text-foreground'}`}>
-                          {day.numero_dia}
-                        </span>
-                        <span className={`text-xs mt-2 line-clamp-2 font-medium ${day.imagem_url ? 'text-white/90' : 'text-muted-foreground'}`}>
-                          {day.titulo || `Dia ${day.numero_dia}`}
-                        </span>
-                        <div className="mt-3">
-                          <Badge variant="default" className="text-[10px] bg-primary/90 border-0">
-                            Liberado
-                          </Badge>
-                        </div>
-                        {isCurrent && (
-                          <span className={`text-[10px] font-semibold mt-1.5 ${day.imagem_url ? 'text-white' : 'text-primary'}`}>
-                            ▶ Atual
-                          </span>
-                        )}
-                      </div>
+                      {inner}
                     </Link>
-                  ) : (
-                    <div
-                      className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted/20 text-muted-foreground/50 cursor-not-allowed"
-                      style={{ width: '180px', height: '240px' }}
-                    >
-                      <Lock className="h-6 w-6 mb-2 opacity-40" />
-                      <span className="text-3xl font-bold opacity-40">{day.numero_dia}</span>
-                      <span className="text-xs mt-2 opacity-50">{day.titulo || `Dia ${day.numero_dia}`}</span>
-                      <Badge variant="secondary" className="text-[10px] mt-3 opacity-60">
-                        🔒 Bloqueado
-                      </Badge>
-                    </div>
                   )}
                 </motion.div>
               );
