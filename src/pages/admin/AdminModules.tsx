@@ -119,6 +119,7 @@ export default function AdminModules() {
       ordem: module.ordem,
       texto_destaque_palavra: module.texto_destaque_palavra || '',
       cor_destaque: module.cor_destaque || DEFAULT_HIGHLIGHT,
+      imagem_url: module.imagem_url || '',
     });
     setOpen(true);
   };
