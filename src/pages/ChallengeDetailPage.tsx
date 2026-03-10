@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Lock, Calendar, CheckCircle, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, Calendar, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Challenge {
