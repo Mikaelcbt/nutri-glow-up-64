@@ -11,6 +11,7 @@ const navItems = [
   { title: 'Associações', path: '/admin/associacoes', icon: Users },
   { title: 'Transformações', path: '/admin/transformacoes', icon: ImageIcon },
   { title: 'Materiais', path: '/admin/materiais', icon: FileText },
+  { title: 'Desafios', path: '/admin/desafios', icon: Trophy },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

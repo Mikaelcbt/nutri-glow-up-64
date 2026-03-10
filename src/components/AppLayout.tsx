@@ -10,6 +10,7 @@ import NutriChatFloat from '@/components/NutriChatFloat';
 const navItems = [
   { title: 'Início', path: '/app', icon: Home },
   { title: 'Comunidade', path: '/app/comunidade', icon: Users },
+  { title: 'Desafios', path: '/app/desafios', icon: Trophy },
   { title: 'Antes & Depois', path: '/app/antes-e-depois', icon: ArrowLeftRight },
   { title: 'Materiais', path: '/app/materiais', icon: FileText },
   { title: 'NutriIA', path: '/app/nutricionista-ia', icon: Sparkles },
