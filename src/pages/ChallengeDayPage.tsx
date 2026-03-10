@@ -5,8 +5,9 @@ import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
 import { AnimatedPage, fadeInUp } from '@/components/AnimatedPage';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { Download, CheckCircle, ArrowLeft, UtensilsCrossed, FileText } from 'lucide-react';
+import { Download, CheckCircle, ArrowLeft, Clock, ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -22,6 +23,35 @@ interface DayData {
   liberado: boolean;
 }
 
+interface DietData {
+  cafe_manha: string;
+  lanche_manha: string;
+  almoco: string;
+  lanche_tarde: string;
+  jantar: string;
+  ceia: string;
+  observacoes: string;
+  alimentos_permitidos: string;
+}
+
+interface RecipeData {
+  titulo_receita: string;
+  ingredientes: string;
+  modo_preparo: string;
+  tempo_preparo: string;
+  rendimento: string;
+}
+
+const emptyDiet: DietData = { cafe_manha: '', lanche_manha: '', almoco: '', lanche_tarde: '', jantar: '', ceia: '', observacoes: '', alimentos_permitidos: '' };
+const emptyRecipe: RecipeData = { titulo_receita: '', ingredientes: '', modo_preparo: '', tempo_preparo: '', rendimento: '' };
+
+function parseDiet(raw: string): DietData {
+  try { return { ...emptyDiet, ...JSON.parse(raw) }; } catch { return { ...emptyDiet, alimentos_permitidos: raw || '' }; }
+}
+function parseRecipe(raw: string): RecipeData {
+  try { return { ...emptyRecipe, ...JSON.parse(raw) }; } catch { return { ...emptyRecipe, modo_preparo: raw || '' }; }
+}
+
 function VideoPlayer({ url }: { url: string }) {
   if (!url) return null;
   const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/);
@@ -29,24 +59,33 @@ function VideoPlayer({ url }: { url: string }) {
 
   if (ytMatch) {
     return (
-      <div className="aspect-video rounded-xl overflow-hidden">
+      <div className="aspect-video rounded-2xl overflow-hidden shadow-lg">
         <iframe src={`https://www.youtube.com/embed/${ytMatch[1]}`} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
       </div>
     );
   }
   if (vimeoMatch) {
     return (
-      <div className="aspect-video rounded-xl overflow-hidden">
+      <div className="aspect-video rounded-2xl overflow-hidden shadow-lg">
         <iframe src={`https://player.vimeo.com/video/${vimeoMatch[1]}`} className="w-full h-full" allowFullScreen />
       </div>
     );
   }
   return (
-    <div className="aspect-video rounded-xl overflow-hidden">
+    <div className="aspect-video rounded-2xl overflow-hidden shadow-lg">
       <video src={url} controls className="w-full h-full bg-black" />
     </div>
   );
 }
+
+const meals: { key: keyof DietData; label: string; emoji: string }[] = [
+  { key: 'cafe_manha', label: 'Café da manhã', emoji: '🌅' },
+  { key: 'lanche_manha', label: 'Lanche da manhã', emoji: '☀️' },
+  { key: 'almoco', label: 'Almoço', emoji: '🥗' },
+  { key: 'lanche_tarde', label: 'Lanche da tarde', emoji: '🌤️' },
+  { key: 'jantar', label: 'Jantar', emoji: '🌙' },
+  { key: 'ceia', label: 'Ceia', emoji: '🌜' },
+];
 
 export default function ChallengeDayPage() {
   const { id, numero } = useParams<{ id: string; numero: string }>();
@@ -55,6 +94,7 @@ export default function ChallengeDayPage() {
   const [challengeTitle, setChallengeTitle] = useState('');
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [marking, setMarking] = useState(false);
 
   useEffect(() => {
     if (id && numero) loadDay();
@@ -79,34 +119,28 @@ export default function ChallengeDayPage() {
         .maybeSingle();
       if (prog?.concluido) setCompleted(true);
     }
-
     setLoading(false);
   };
 
   const markComplete = async () => {
     if (!user || !id || !numero) return;
+    setMarking(true);
     const { error } = await supabase.from('desafio_progresso').upsert({
-      desafio_id: id,
-      user_id: user.id,
-      numero_dia: Number(numero),
-      concluido: true,
+      desafio_id: id, user_id: user.id, numero_dia: Number(numero), concluido: true,
     }, { onConflict: 'desafio_id,user_id,numero_dia' });
 
-    if (!error) {
-      setCompleted(true);
-      toast.success('Dia marcado como concluído! 🎉');
-    } else {
-      toast.error('Erro ao marcar progresso');
-    }
+    if (!error) { setCompleted(true); toast.success('Dia marcado como concluído! 🎉'); }
+    else toast.error('Erro ao marcar progresso');
+    setMarking(false);
   };
 
   if (loading) {
     return (
       <AppLayout>
-        <div className="px-8 py-8 md:px-16 space-y-6 max-w-4xl mx-auto">
+        <div className="px-6 py-8 md:px-16 space-y-6 max-w-4xl mx-auto">
           <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-[50vh] w-full rounded-xl" />
-          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-[50vh] w-full rounded-2xl" />
+          <div className="grid grid-cols-2 gap-4"><Skeleton className="h-32 rounded-xl" /><Skeleton className="h-32 rounded-xl" /></div>
         </div>
       </AppLayout>
     );
@@ -123,18 +157,32 @@ export default function ChallengeDayPage() {
     );
   }
 
+  const diet = parseDiet(day.alimentos);
+  const recipe = parseRecipe(day.receita);
+  const hasMeals = meals.some(m => diet[m.key]?.trim());
+  const hasRecipe = recipe.titulo_receita || recipe.ingredientes || recipe.modo_preparo;
+  const alimentosChips = diet.alimentos_permitidos?.split(/[,\n]/).map(s => s.trim()).filter(Boolean) || [];
+
   return (
     <AppLayout>
       <AnimatedPage>
-        <div className="px-8 py-8 md:px-16 max-w-4xl mx-auto space-y-8">
+        <div className="px-6 py-8 md:px-16 max-w-4xl mx-auto space-y-8 pb-28">
           {/* Header */}
-          <motion.div variants={fadeInUp} initial="initial" animate="animate" className="space-y-2">
-            <Link to={`/app/desafios/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <motion.div variants={fadeInUp} initial="initial" animate="animate" className="space-y-3">
+            <Link to={`/app/desafios/${id}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" /> {challengeTitle}
             </Link>
-            <h1 className="font-display text-3xl md:text-4xl font-semibold text-foreground">
-              Dia {day.numero_dia} — {day.titulo || `Dia ${day.numero_dia}`}
-            </h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-xl">
+                {day.numero_dia}
+              </div>
+              <div>
+                <h1 className="font-display text-2xl md:text-3xl font-semibold text-foreground">
+                  {day.titulo || `Dia ${day.numero_dia}`}
+                </h1>
+                <Badge className="bg-primary/15 text-primary border-primary/20 mt-1">✓ Liberado</Badge>
+              </div>
+            </div>
           </motion.div>
 
           {/* Video */}
@@ -144,60 +192,110 @@ export default function ChallengeDayPage() {
             </motion.div>
           )}
 
-          {/* PDF Download */}
-          {day.pdf_url && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-              className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card"
-            >
-              <FileText className="h-8 w-8 text-primary" />
-              <div className="flex-1">
-                <p className="font-medium text-foreground">PDF da Dieta</p>
-                <p className="text-sm text-muted-foreground">Baixe o plano alimentar do dia</p>
+          {/* Meals Grid */}
+          {hasMeals && (
+            <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="space-y-4">
+              <h2 className="font-display text-xl font-semibold text-foreground">🍽️ Dieta de Hoje</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {meals.map(({ key, label, emoji }) => {
+                  const content = diet[key]?.trim();
+                  if (!content) return null;
+                  return (
+                    <div
+                      key={key}
+                      className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{emoji}</span>
+                        <h3 className="font-medium text-foreground text-sm">{label}</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{content}</p>
+                    </div>
+                  );
+                })}
               </div>
-              <Button asChild variant="outline" size="sm">
+            </motion.section>
+          )}
+
+          {/* Alimentos Permitidos Chips */}
+          {alimentosChips.length > 0 && (
+            <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-3">
+              <h2 className="font-display text-xl font-semibold text-foreground">✅ Alimentos Permitidos Hoje</h2>
+              <div className="flex flex-wrap gap-2">
+                {alimentosChips.map((item, i) => (
+                  <span key={i} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </motion.section>
+          )}
+
+          {/* Recipe */}
+          {hasRecipe && (
+            <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="space-y-4">
+              <h2 className="font-display text-xl font-semibold text-foreground">
+                <ChefHat className="inline h-5 w-5 mr-1.5" /> Receita do Dia
+              </h2>
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                {recipe.titulo_receita && <h3 className="text-lg font-semibold text-foreground">{recipe.titulo_receita}</h3>}
+                {(recipe.tempo_preparo || recipe.rendimento) && (
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    {recipe.tempo_preparo && <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {recipe.tempo_preparo}</span>}
+                    {recipe.rendimento && <span>📦 {recipe.rendimento}</span>}
+                  </div>
+                )}
+                {recipe.ingredientes && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-1.5">Ingredientes</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{recipe.ingredientes}</p>
+                  </div>
+                )}
+                {recipe.modo_preparo && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-1.5">Modo de Preparo</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{recipe.modo_preparo}</p>
+                  </div>
+                )}
+              </div>
+            </motion.section>
+          )}
+
+          {/* Observações */}
+          {diet.observacoes?.trim() && (
+            <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-2">
+                <h2 className="font-display text-lg font-semibold text-foreground">💡 Observações e Dicas</h2>
+                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{diet.observacoes}</p>
+              </div>
+            </motion.section>
+          )}
+
+          {/* PDF */}
+          {day.pdf_url && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+              <Button asChild variant="outline" className="w-full" size="lg">
                 <a href={day.pdf_url} target="_blank" rel="noopener noreferrer">
-                  <Download className="mr-2 h-4 w-4" /> Download
+                  <Download className="mr-2 h-5 w-5" /> Baixar material complementar
                 </a>
               </Button>
             </motion.div>
           )}
+        </div>
 
-          {/* Alimentos */}
-          {day.alimentos && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-              className="p-6 rounded-xl border border-border bg-card space-y-3"
-            >
-              <div className="flex items-center gap-2">
-                <UtensilsCrossed className="h-5 w-5 text-primary" />
-                <h2 className="font-display text-xl font-semibold text-foreground">Alimentos Permitidos</h2>
-              </div>
-              <div className="text-sm text-muted-foreground whitespace-pre-line">{day.alimentos}</div>
-            </motion.div>
-          )}
-
-          {/* Receita */}
-          {day.receita && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-              className="p-6 rounded-xl border border-border bg-card space-y-3"
-            >
-              <h2 className="font-display text-xl font-semibold text-foreground">🍽️ Receita do Dia</h2>
-              <div className="text-sm text-muted-foreground whitespace-pre-line">{day.receita}</div>
-            </motion.div>
-          )}
-
-          {/* Mark Complete */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        {/* Fixed bottom button */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border z-40">
+          <div className="max-w-4xl mx-auto">
             {completed ? (
-              <div className="flex items-center gap-2 p-4 rounded-xl bg-primary/10 text-primary">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-medium">Dia concluído!</span>
+              <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-primary/10 text-primary font-medium">
+                <CheckCircle className="h-5 w-5" /> Dia concluído! 🎉
               </div>
             ) : (
-              <Button onClick={markComplete} size="lg" className="w-full">
-                <CheckCircle className="mr-2 h-5 w-5" /> Marcar dia como concluído
+              <Button onClick={markComplete} disabled={marking} size="lg" className="w-full text-base">
+                <CheckCircle className="mr-2 h-5 w-5" /> {marking ? 'Marcando...' : 'Marcar dia como concluído'}
               </Button>
             )}
-          </motion.div>
+          </div>
         </div>
       </AnimatedPage>
     </AppLayout>
