@@ -28,6 +28,8 @@ import AdminAssociations from "./pages/admin/AdminAssociations";
 import AdminTransformations from "./pages/admin/AdminTransformations";
 import AdminMaterials from "./pages/admin/AdminMaterials";
 import AdminChallenges from "./pages/admin/AdminChallenges";
+import AdminChallengeDays from "./pages/admin/AdminChallengeDays";
+import AdminChallengeDayEdit from "./pages/admin/AdminChallengeDayEdit";
 import ChallengesPage from "./pages/ChallengesPage";
 import ChallengeDetailPage from "./pages/ChallengeDetailPage";
 import ChallengeDayPage from "./pages/ChallengeDayPage";
