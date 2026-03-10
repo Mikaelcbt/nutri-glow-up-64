@@ -154,19 +154,20 @@ export default function LandingPage() {
 
       {/* Programs */}
       {products.length > 0 && (
-        <section className="py-20 px-6 bg-secondary/50">
+        <section className="py-24 px-6 bg-secondary/50">
           <div className="max-w-6xl mx-auto">
             <motion.div
-              className="text-center mb-12"
+              className="text-center mb-16"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <h2 className="font-display text-4xl font-semibold text-foreground">O que você vai aprender</h2>
-              <p className="text-muted-foreground mt-3">Programas completos desenvolvidos por especialistas</p>
+              <span className="inline-block rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent-foreground mb-4">Nossos programas</span>
+              <h2 className="font-display text-4xl lg:text-5xl font-bold text-foreground">O que você vai aprender</h2>
+              <p className="text-muted-foreground mt-4 text-lg max-w-xl mx-auto">Programas completos desenvolvidos por especialistas em nutrição</p>
             </motion.div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((p, i) => (
                 <motion.div
                   key={p.id}
@@ -174,16 +175,23 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.4 }}
-                  className="rounded-2xl border border-border bg-card overflow-hidden shadow-card hover:shadow-soft transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02]"
+                  className="group rounded-2xl border border-border bg-card overflow-hidden shadow-card hover:shadow-soft transition-all duration-300 hover:-translate-y-2"
                 >
-                  {p.imagem_capa_url && (
-                    <img src={p.imagem_capa_url} alt={p.nome} className="h-48 w-full object-cover" />
-                  )}
-                  <div className="p-6">
-                    <h3 className="font-display text-xl font-semibold text-foreground">{p.nome}</h3>
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{p.descricao}</p>
-                    <Link to="/register" className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-primary hover:underline">
-                      Começar <ChevronRight className="h-4 w-4" />
+                  <div className="relative overflow-hidden">
+                    {p.imagem_capa_url ? (
+                      <img src={p.imagem_capa_url} alt={p.nome} className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="h-56 w-full bg-accent flex items-center justify-center">
+                        <BookOpen className="h-12 w-12 text-accent-foreground/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-foreground/20 to-transparent" />
+                  </div>
+                  <div className="p-6 space-y-3">
+                    <h3 className="font-display text-2xl font-semibold text-foreground">{p.nome}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{p.descricao}</p>
+                    <Link to="/register" className="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
+                      Começar programa <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
                 </motion.div>
