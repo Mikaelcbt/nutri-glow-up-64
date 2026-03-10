@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
 
 interface Product { id: string; nome: string; slug: string; descricao: string; imagem_capa_url: string; cor_destaque: string; }
-interface Module { id: string; titulo: string; descricao: string; ordem: number; texto_destaque_palavra: string; cor_destaque: string; }
+interface Module { id: string; titulo: string; descricao: string; ordem: number; texto_destaque_palavra: string; cor_destaque: string; imagem_url?: string; }
 interface Lesson { id: string; titulo: string; descricao: string; ordem: number; is_preview: boolean; }
 
 export default function ProgramPage() {
@@ -138,9 +138,13 @@ export default function ProgramPage() {
                 >
                   <button onClick={() => toggleModule(mod.id)} className="flex w-full items-center justify-between p-5 text-left hover:bg-secondary/50 transition-colors">
                     <div className="flex items-center gap-4">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-card" style={{ backgroundColor: mod.cor_destaque || '#22C55E' }}>
-                        {moduleAccessible ? i + 1 : <Lock className="h-4 w-4" />}
-                      </span>
+                      {mod.imagem_url ? (
+                        <img src={mod.imagem_url} alt={mod.titulo} className="h-10 w-10 rounded-xl object-cover" />
+                      ) : (
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-card" style={{ backgroundColor: mod.cor_destaque || '#22C55E' }}>
+                          {moduleAccessible ? i + 1 : <Lock className="h-4 w-4" />}
+                        </span>
+                      )}
                       <div>
                         <h3 className="font-display text-xl font-semibold text-foreground flex items-center gap-2">
                           {mod.titulo}
@@ -149,9 +153,16 @@ export default function ProgramPage() {
                         <p className="text-sm text-muted-foreground">{mod.descricao}</p>
                       </div>
                     </div>
-                    <motion.div animate={{ rotate: expandedModule === mod.id ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </motion.div>
+                    <div className="flex items-center gap-2">
+                      {moduleAccessible && (
+                        <Link to={`/app/modulo/${mod.id}`} onClick={(e) => e.stopPropagation()} className="text-xs text-primary hover:underline mr-2">
+                          Ver módulo
+                        </Link>
+                      )}
+                      <motion.div animate={{ rotate: expandedModule === mod.id ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </motion.div>
+                    </div>
                   </button>
 
                   <AnimatePresence>
