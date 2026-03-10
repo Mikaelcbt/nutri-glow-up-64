@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import RichEditor from '@/components/RichEditor';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
 
@@ -106,21 +106,6 @@ export default function AdminChallengeDayEdit() {
     return m?.[1] || null;
   };
 
-  const MealField = ({ label, emoji, field, rows = 3 }: { label: string; emoji: string; field: keyof DayData; rows?: number }) => (
-    <div className="space-y-1.5">
-      <Label className="flex items-center gap-1.5 text-sm font-medium">
-        <span>{emoji}</span> {label}
-      </Label>
-      <Textarea
-        value={(day?.[field] as string) || ''}
-        onChange={e => update(field, e.target.value)}
-        rows={rows}
-        placeholder={`Descreva o ${label.toLowerCase()}...`}
-        className="text-sm resize-none"
-      />
-    </div>
-  );
-
   if (loading) {
     return (
       <AdminLayout>
@@ -178,17 +163,19 @@ export default function AdminChallengeDayEdit() {
             </div>
           </TabsContent>
 
-          <TabsContent value="dieta" className="space-y-4 mt-4">
-            <MealField label="Café da manhã" emoji="🌅" field="cafe_manha" />
-            <MealField label="Lanche da manhã" emoji="☀️" field="lanche_manha" />
-            <MealField label="Almoço" emoji="🥗" field="almoco" />
-            <MealField label="Lanche da tarde" emoji="🌤️" field="lanche_tarde" />
-            <MealField label="Jantar" emoji="🌙" field="jantar" />
-            <MealField label="Ceia" emoji="🌜" field="ceia" />
+          <TabsContent value="dieta" className="space-y-5 mt-4">
+            <RichEditor label="Café da manhã" emoji="🌅" content={day.cafe_manha || ''} onChange={v => update('cafe_manha', v)} />
+            <RichEditor label="Lanche da manhã" emoji="☀️" content={day.lanche_manha || ''} onChange={v => update('lanche_manha', v)} />
+            <RichEditor label="Almoço" emoji="🥗" content={day.almoco || ''} onChange={v => update('almoco', v)} />
+            <RichEditor label="Lanche da tarde" emoji="🌤️" content={day.lanche_tarde || ''} onChange={v => update('lanche_tarde', v)} />
+            <RichEditor label="Jantar" emoji="🌙" content={day.jantar || ''} onChange={v => update('jantar', v)} />
+            <RichEditor label="Ceia" emoji="🌜" content={day.ceia || ''} onChange={v => update('ceia', v)} />
+
             <div className="border-t border-border pt-4">
-              <MealField label="Alimentos permitidos hoje" emoji="✅" field="alimentos" rows={4} />
+              <RichEditor label="Alimentos permitidos hoje" emoji="✅" content={day.alimentos || ''} onChange={v => update('alimentos', v)} />
             </div>
-            <MealField label="Observações e dicas do dia" emoji="💡" field="observacoes" rows={4} />
+            <RichEditor label="Observações e dicas do dia" emoji="💡" content={day.observacoes || ''} onChange={v => update('observacoes', v)} />
+
             <div>
               <Label>PDF complementar <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <div className="flex gap-2 mt-1">
@@ -201,19 +188,13 @@ export default function AdminChallengeDayEdit() {
             </div>
           </TabsContent>
 
-          <TabsContent value="receita" className="space-y-4 mt-4">
+          <TabsContent value="receita" className="space-y-5 mt-4">
             <div>
               <Label>Título da receita</Label>
               <Input value={day.titulo_receita || ''} onChange={e => update('titulo_receita', e.target.value)} placeholder="Ex: Sopa detox de legumes" />
             </div>
-            <div>
-              <Label>Ingredientes</Label>
-              <Textarea value={day.ingredientes || ''} onChange={e => update('ingredientes', e.target.value)} rows={5} placeholder="Liste os ingredientes..." />
-            </div>
-            <div>
-              <Label>Modo de preparo</Label>
-              <Textarea value={day.modo_preparo || ''} onChange={e => update('modo_preparo', e.target.value)} rows={5} placeholder="Descreva o passo a passo..." />
-            </div>
+            <RichEditor label="Ingredientes" emoji="📝" content={day.ingredientes || ''} onChange={v => update('ingredientes', v)} />
+            <RichEditor label="Modo de preparo" emoji="👨‍🍳" content={day.modo_preparo || ''} onChange={v => update('modo_preparo', v)} />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Tempo de preparo</Label>

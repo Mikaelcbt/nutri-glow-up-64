@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, ChevronRight, Unlock, Lock, Edit, Trophy } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Unlock, Lock, Edit, Trophy, AlertCircle } from 'lucide-react';
 
 interface DayData {
   id: string;
@@ -29,6 +29,7 @@ export default function AdminChallengeDays() {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) loadData();
@@ -36,31 +37,63 @@ export default function AdminChallengeDays() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
 
-    const { data: ch, error: chErr } = await supabase.from('desafios').select('id, titulo, total_dias').eq('id', id!).single();
-    if (chErr || !ch) { toast.error('Desafio não encontrado'); navigate('/admin/desafios'); return; }
+    // Load challenge info
+    const { data: ch, error: chErr } = await supabase
+      .from('desafios')
+      .select('id, titulo, total_dias')
+      .eq('id', id!)
+      .single();
+
+    if (chErr || !ch) {
+      setError('Desafio não encontrado: ' + (chErr?.message || 'ID inválido'));
+      toast.error('Desafio não encontrado');
+      setLoading(false);
+      return;
+    }
     setChallenge(ch);
 
-    let { data: daysData, error: dErr } = await supabase.from('desafio_dias').select('id, desafio_id, numero_dia, titulo, liberado').eq('desafio_id', id!).order('numero_dia');
-    if (dErr) { toast.error('Erro ao carregar dias'); setLoading(false); return; }
+    // Load days
+    const { data: daysData, error: dErr } = await supabase
+      .from('desafio_dias')
+      .select('*')
+      .eq('desafio_id', id!)
+      .order('numero_dia', { ascending: true });
+
+    if (dErr) {
+      console.error('Erro ao buscar dias:', dErr);
+      setError('Erro ao carregar dias: ' + dErr.message);
+      setLoading(false);
+      return;
+    }
+
+    let finalDays = daysData || [];
 
     // Auto-create missing days
-    if (!daysData || daysData.length < ch.total_dias) {
-      const existingNums = new Set((daysData || []).map(d => d.numero_dia));
+    if (finalDays.length < ch.total_dias) {
+      const existingNums = new Set(finalDays.map(d => d.numero_dia));
       const missing = Array.from({ length: ch.total_dias }, (_, i) => i + 1)
         .filter(n => !existingNums.has(n))
         .map(n => ({ desafio_id: ch.id, numero_dia: n, titulo: `Dia ${n}`, liberado: false }));
 
       if (missing.length > 0) {
-        const { data: created, error: cErr } = await supabase.from('desafio_dias').insert(missing).select('id, desafio_id, numero_dia, titulo, liberado');
-        if (!cErr && created) {
-          daysData = [...(daysData || []), ...created].sort((a, b) => a.numero_dia - b.numero_dia);
+        const { data: created, error: cErr } = await supabase
+          .from('desafio_dias')
+          .insert(missing)
+          .select('*');
+
+        if (cErr) {
+          console.error('Erro ao criar dias:', cErr);
+          setError('Erro ao criar dias automaticamente: ' + cErr.message);
+        } else if (created) {
+          finalDays = [...finalDays, ...created].sort((a, b) => a.numero_dia - b.numero_dia);
           toast.success(`${missing.length} dia(s) criado(s) automaticamente`);
         }
       }
     }
 
-    setDays(daysData || []);
+    setDays(finalDays);
     setLoading(false);
   };
 
@@ -116,22 +149,37 @@ export default function AdminChallengeDays() {
           </div>
         </div>
 
+        {/* Error display */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 rounded-xl border border-destructive/50 bg-destructive/10 text-destructive">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Erro ao carregar dias</p>
+              <p className="text-sm opacity-80">{error}</p>
+            </div>
+            <Button variant="outline" size="sm" className="ml-auto" onClick={loadData}>Tentar novamente</Button>
+          </div>
+        )}
+
         {/* Bulk actions */}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={releaseNext}><ChevronRight className="h-4 w-4 mr-1" /> Liberar próximo dia</Button>
-          <Button variant="outline" size="sm" onClick={() => bulkToggle(true)}><Unlock className="h-4 w-4 mr-1" /> Liberar todos</Button>
-          <Button variant="outline" size="sm" onClick={() => bulkToggle(false)}><Lock className="h-4 w-4 mr-1" /> Bloquear todos</Button>
-        </div>
+        {!error && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={releaseNext}><ChevronRight className="h-4 w-4 mr-1" /> Liberar próximo dia</Button>
+            <Button variant="outline" size="sm" onClick={() => bulkToggle(true)}><Unlock className="h-4 w-4 mr-1" /> Liberar todos</Button>
+            <Button variant="outline" size="sm" onClick={() => bulkToggle(false)}><Lock className="h-4 w-4 mr-1" /> Bloquear todos</Button>
+          </div>
+        )}
 
         {/* Days grid */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
             {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-40 rounded-xl" />)}
           </div>
-        ) : days.length === 0 ? (
+        ) : days.length === 0 && !error ? (
           <div className="text-center py-16">
             <Trophy className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground">Nenhum dia encontrado.</p>
+            <p className="text-xs text-muted-foreground mt-1">ID do desafio: {id}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
