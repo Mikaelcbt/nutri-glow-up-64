@@ -27,6 +27,10 @@ import AdminLessons from "./pages/admin/AdminLessons";
 import AdminAssociations from "./pages/admin/AdminAssociations";
 import AdminTransformations from "./pages/admin/AdminTransformations";
 import AdminMaterials from "./pages/admin/AdminMaterials";
+import AdminChallenges from "./pages/admin/AdminChallenges";
+import ChallengesPage from "./pages/ChallengesPage";
+import ChallengeDetailPage from "./pages/ChallengeDetailPage";
+import ChallengeDayPage from "./pages/ChallengeDayPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +61,9 @@ const App = () => (
             <Route path="/app/materiais" element={<ProtectedRoute><MaterialsPage /></ProtectedRoute>} />
             <Route path="/app/nutricionista-ia" element={<ProtectedRoute><NutriIAPage /></ProtectedRoute>} />
             <Route path="/app/modulo/:id" element={<ProtectedRoute><ModulePage /></ProtectedRoute>} />
+            <Route path="/app/desafios" element={<ProtectedRoute><ChallengesPage /></ProtectedRoute>} />
+            <Route path="/app/desafios/:id" element={<ProtectedRoute><ChallengeDetailPage /></ProtectedRoute>} />
+            <Route path="/app/desafios/:id/dia/:numero" element={<ProtectedRoute><ChallengeDayPage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -66,6 +73,7 @@ const App = () => (
             <Route path="/admin/associacoes" element={<AdminRoute><AdminAssociations /></AdminRoute>} />
             <Route path="/admin/transformacoes" element={<AdminRoute><AdminTransformations /></AdminRoute>} />
             <Route path="/admin/materiais" element={<AdminRoute><AdminMaterials /></AdminRoute>} />
+            <Route path="/admin/desafios" element={<AdminRoute><AdminChallenges /></AdminRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
