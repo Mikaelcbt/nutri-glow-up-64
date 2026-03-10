@@ -61,6 +61,9 @@ const App = () => (
             <Route path="/app/materiais" element={<ProtectedRoute><MaterialsPage /></ProtectedRoute>} />
             <Route path="/app/nutricionista-ia" element={<ProtectedRoute><NutriIAPage /></ProtectedRoute>} />
             <Route path="/app/modulo/:id" element={<ProtectedRoute><ModulePage /></ProtectedRoute>} />
+            <Route path="/app/desafios" element={<ProtectedRoute><ChallengesPage /></ProtectedRoute>} />
+            <Route path="/app/desafios/:id" element={<ProtectedRoute><ChallengeDetailPage /></ProtectedRoute>} />
+            <Route path="/app/desafios/:id/dia/:numero" element={<ProtectedRoute><ChallengeDayPage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
