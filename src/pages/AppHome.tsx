@@ -41,13 +41,19 @@ export default function AppHome() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: products } = await supabase
-        .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
+      // Buscar TODOS os produtos ativos
+      const { data: products, error: prodError } = await supabase
+        .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
 
+      if (prodError) console.error('Erro ao buscar produtos:', prodError);
+      
       if (products?.length) {
-        setFeaturedProduct(products[0]);
+        setAllProducts(products);
+        const featured = products[0];
+        setFeaturedProduct(featured);
+
         const { data: mods } = await supabase
-          .from('modules').select('*').eq('product_id', products[0].id).order('ordem');
+          .from('modules').select('*').eq('product_id', featured.id).order('ordem');
         if (mods) setModules(mods);
 
         const { data: allLessons } = await supabase
@@ -61,6 +67,8 @@ export default function AppHome() {
         const completedIds = new Set(progress?.map(p => p.lesson_id) || []);
         const completedInProduct = allLessons?.filter(l => completedIds.has(l.id)).length || 0;
         setProductProgress(totalLessons > 0 ? (completedInProduct / totalLessons) * 100 : 0);
+      } else {
+        setAllProducts([]);
       }
 
       const { data: inProgress } = await supabase
