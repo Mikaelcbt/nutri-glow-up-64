@@ -61,9 +61,12 @@ export default function AppHome() {
       setAllProducts(products);
 
       // User associations
-      const { data: assocs } = await supabase
+      const { data: assocs, error: assocErr } = await supabase
         .from('associacoes').select('product_id, status')
         .eq('user_id', user.id).eq('status', 'ativo');
+
+      if (assocErr) console.error('[AppHome] Erro ao buscar associações:', assocErr);
+      console.log('[AppHome] associations:', { assocs });
 
       const map: Record<string, boolean> = {};
       (assocs ?? []).forEach(a => { map[a.product_id] = true; });
