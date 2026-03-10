@@ -1,15 +1,17 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield } from 'lucide-react';
+import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import NutriChatFloat from '@/components/NutriChatFloat';
 
 const navItems = [
   { title: 'Início', path: '/app', icon: Home },
   { title: 'Comunidade', path: '/app/comunidade', icon: Users },
   { title: 'Antes & Depois', path: '/app/antes-e-depois', icon: ArrowLeftRight },
   { title: 'Materiais', path: '/app/materiais', icon: FileText },
+  { title: 'NutriIA', path: '/app/nutricionista-ia', icon: Sparkles },
   { title: 'Perfil', path: '/app/perfil', icon: User },
 ];
 
