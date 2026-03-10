@@ -15,6 +15,7 @@ interface DayData {
   numero_dia: number;
   titulo: string;
   liberado: boolean;
+  imagem_url?: string;
 }
 
 interface Challenge {
@@ -39,7 +40,6 @@ export default function AdminChallengeDays() {
     setLoading(true);
     setError(null);
 
-    // Load challenge info
     const { data: ch, error: chErr } = await supabase
       .from('desafios')
       .select('id, titulo, total_dias')
@@ -54,7 +54,6 @@ export default function AdminChallengeDays() {
     }
     setChallenge(ch);
 
-    // Load days
     const { data: daysData, error: dErr } = await supabase
       .from('desafio_dias')
       .select('*')
@@ -70,7 +69,6 @@ export default function AdminChallengeDays() {
 
     let finalDays = daysData || [];
 
-    // Auto-create missing days
     if (finalDays.length < ch.total_dias) {
       const existingNums = new Set(finalDays.map(d => d.numero_dia));
       const missing = Array.from({ length: ch.total_dias }, (_, i) => i + 1)
@@ -172,8 +170,8 @@ export default function AdminChallengeDays() {
 
         {/* Days grid */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-            {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-40 rounded-xl" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-[200px] w-full rounded-xl" />)}
           </div>
         ) : days.length === 0 && !error ? (
           <div className="text-center py-16">
@@ -182,27 +180,63 @@ export default function AdminChallengeDays() {
             <p className="text-xs text-muted-foreground mt-1">ID do desafio: {id}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {days.map(day => (
-              <div key={day.id} className={`relative rounded-xl border p-4 text-center space-y-2 transition-all hover:shadow-md ${day.liberado ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/30'}`}>
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full text-lg font-bold ${day.liberado ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                  {day.numero_dia}
+              <div
+                key={day.id}
+                className={`group relative rounded-xl border overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/60 ${
+                  day.liberado ? 'border-primary/40' : 'border-border'
+                }`}
+                style={{ minHeight: '200px', width: '100%', maxWidth: '160px' }}
+              >
+                {/* Background image or fallback */}
+                {day.imagem_url ? (
+                  <div className="absolute inset-0">
+                    <img src={day.imagem_url} alt={day.titulo} className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+                  </div>
+                ) : (
+                  <div className={`absolute inset-0 ${day.liberado ? 'bg-gradient-to-br from-primary/10 to-primary/5' : 'bg-muted/30'}`} />
+                )}
+
+                {/* Content */}
+                <div className="relative flex flex-col items-center justify-between h-full p-3 text-center" style={{ minHeight: '200px' }}>
+                  {/* Day number */}
+                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full text-xl font-bold mt-2 ${
+                    day.imagem_url
+                      ? 'bg-white/20 backdrop-blur-sm text-white'
+                      : day.liberado
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {day.numero_dia}
+                  </div>
+
+                  {/* Title & status */}
+                  <div className="space-y-2 flex-1 flex flex-col justify-center">
+                    <p className={`text-xs font-medium truncate max-w-full ${day.imagem_url ? 'text-white' : 'text-foreground'}`}>
+                      {day.titulo || 'Sem título'}
+                    </p>
+                    <Badge variant={day.liberado ? 'default' : 'secondary'} className="text-[10px] mx-auto">
+                      {day.liberado ? 'Liberado' : 'Bloqueado'}
+                    </Badge>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="space-y-1.5 w-full">
+                    <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                      <Switch checked={day.liberado} onCheckedChange={() => toggleDay(day)} />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`w-full text-xs ${day.imagem_url ? 'text-white hover:bg-white/20' : ''}`}
+                      onClick={() => navigate(`/admin/desafios/${id}/dias/${day.numero_dia}`)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" /> Editar
+                    </Button>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{day.titulo || 'Sem título'}</p>
-                <Badge variant={day.liberado ? 'default' : 'secondary'} className="text-[10px]">
-                  {day.liberado ? 'Liberado' : 'Bloqueado'}
-                </Badge>
-                <div className="flex items-center justify-center">
-                  <Switch checked={day.liberado} onCheckedChange={() => toggleDay(day)} />
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={() => navigate(`/admin/desafios/${id}/dias/${day.numero_dia}`)}
-                >
-                  <Edit className="h-3 w-3 mr-1" /> Editar conteúdo
-                </Button>
               </div>
             ))}
           </div>

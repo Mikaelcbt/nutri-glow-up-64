@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import RichEditor from '@/components/RichEditor';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Upload, ImagePlus } from 'lucide-react';
 
 interface DayData {
   id: string;
@@ -20,6 +20,7 @@ interface DayData {
   pdf_url: string;
   alimentos: string;
   liberado: boolean;
+  imagem_url: string;
   cafe_manha: string;
   lanche_manha: string;
   almoco: string;
@@ -41,6 +42,7 @@ export default function AdminChallengeDayEdit() {
   const [challengeTitle, setChallengeTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (id && numero) loadDay();
@@ -62,6 +64,24 @@ export default function AdminChallengeDayEdit() {
     setDay(prev => prev ? { ...prev, [field]: value } : null);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !day) return;
+    setUploadingImage(true);
+    const ext = file.name.split('.').pop();
+    const path = `dias/${day.desafio_id}/${day.numero_dia}_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('desafios').upload(path, file);
+    if (error) {
+      toast.error('Erro no upload: ' + error.message);
+      setUploadingImage(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('desafios').getPublicUrl(path);
+    update('imagem_url', urlData.publicUrl);
+    toast.success('Imagem enviada!');
+    setUploadingImage(false);
+  };
+
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !day) return;
@@ -76,7 +96,8 @@ export default function AdminChallengeDayEdit() {
   const save = async () => {
     if (!day) return;
     setSaving(true);
-    const { error } = await supabase.from('desafio_dias').update({
+
+    const payload: Record<string, unknown> = {
       titulo: day.titulo,
       video_url: day.video_url || '',
       pdf_url: day.pdf_url || '',
@@ -94,10 +115,24 @@ export default function AdminChallengeDayEdit() {
       modo_preparo: day.modo_preparo || '',
       tempo_preparo: day.tempo_preparo || '',
       rendimento: day.rendimento || '',
-    }).eq('id', day.id);
+    };
 
-    if (error) toast.error('Erro ao salvar: ' + error.message);
-    else toast.success(`Dia ${day.numero_dia} salvo com sucesso!`);
+    // Only include imagem_url if the column exists (avoid error if missing)
+    if (day.imagem_url !== undefined) {
+      payload.imagem_url = day.imagem_url || '';
+    }
+
+    const { error } = await supabase.from('desafio_dias').update(payload).eq('id', day.id);
+
+    if (error) {
+      if (error.message?.includes('imagem_url')) {
+        toast.error('A coluna imagem_url não existe na tabela desafio_dias. Adicione-a no banco: ALTER TABLE desafio_dias ADD COLUMN imagem_url TEXT DEFAULT \'\';');
+      } else {
+        toast.error('Erro ao salvar: ' + error.message);
+      }
+    } else {
+      toast.success(`Dia ${day.numero_dia} salvo com sucesso!`);
+    }
     setSaving(false);
   };
 
@@ -152,6 +187,40 @@ export default function AdminChallengeDayEdit() {
               <Switch checked={day.liberado} onCheckedChange={v => update('liberado', v)} />
               <Label>Liberado para alunos</Label>
             </div>
+
+            {/* Image upload */}
+            <div>
+              <Label>Imagem do dia <span className="text-muted-foreground font-normal">(opcional — aparece como fundo no card)</span></Label>
+              <div className="mt-2 space-y-2">
+                {day.imagem_url && (
+                  <div className="relative w-full max-w-sm aspect-video rounded-lg overflow-hidden border border-border">
+                    <img src={day.imagem_url} alt="Preview" className="h-full w-full object-cover" />
+                    <button
+                      onClick={() => update('imagem_url', '')}
+                      className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 text-xs hover:bg-black/80 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    value={day.imagem_url || ''}
+                    onChange={e => update('imagem_url', e.target.value)}
+                    placeholder="URL da imagem ou faça upload"
+                    className="flex-1 text-sm"
+                  />
+                  <Button variant="outline" size="sm" disabled={uploadingImage} asChild>
+                    <label className="cursor-pointer">
+                      <ImagePlus className="h-4 w-4 mr-1" />
+                      {uploadingImage ? 'Enviando...' : 'Upload'}
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    </label>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <div>
               <Label>URL do Vídeo <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <Input value={day.video_url || ''} onChange={e => update('video_url', e.target.value)} placeholder="YouTube, Vimeo ou link direto" />
