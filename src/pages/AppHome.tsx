@@ -12,6 +12,10 @@ interface Product {
   id: string; nome: string; slug: string; descricao: string;
   imagem_capa_url: string; texto_imagem_capa: string; cor_destaque: string; is_active: boolean;
 }
+interface AllProduct {
+  id: string; nome: string; slug: string; descricao: string;
+  imagem_capa_url: string; is_active: boolean;
+}
 interface Module {
   id: string; product_id: string; titulo: string; descricao: string;
   ordem: number; texto_destaque_palavra: string; cor_destaque: string;
@@ -22,6 +26,7 @@ interface LessonProgress {
 
 export default function AppHome() {
   const { user, profile } = useAuth();
+  const [allProducts, setAllProducts] = useState<AllProduct[]>([]);
   const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [continueWatching, setContinueWatching] = useState<LessonProgress[]>([]);
@@ -36,13 +41,19 @@ export default function AppHome() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: products } = await supabase
-        .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
+      // Buscar TODOS os produtos ativos
+      const { data: products, error: prodError } = await supabase
+        .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
 
+      if (prodError) console.error('Erro ao buscar produtos:', prodError);
+      
       if (products?.length) {
-        setFeaturedProduct(products[0]);
+        setAllProducts(products);
+        const featured = products[0];
+        setFeaturedProduct(featured);
+
         const { data: mods } = await supabase
-          .from('modules').select('*').eq('product_id', products[0].id).order('ordem');
+          .from('modules').select('*').eq('product_id', featured.id).order('ordem');
         if (mods) setModules(mods);
 
         const { data: allLessons } = await supabase
@@ -56,6 +67,8 @@ export default function AppHome() {
         const completedIds = new Set(progress?.map(p => p.lesson_id) || []);
         const completedInProduct = allLessons?.filter(l => completedIds.has(l.id)).length || 0;
         setProductProgress(totalLessons > 0 ? (completedInProduct / totalLessons) * 100 : 0);
+      } else {
+        setAllProducts([]);
       }
 
       const { data: inProgress } = await supabase
@@ -166,8 +179,8 @@ export default function AppHome() {
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-accent">
               <Clock className="h-8 w-8 text-accent-foreground" />
             </div>
-            <h1 className="font-display text-3xl text-foreground font-semibold">Aguardando liberação de acesso</h1>
-            <p className="text-muted-foreground">Seu acesso a um programa ainda não foi liberado. Entre em contato com a nutricionista para mais informações.</p>
+            <h1 className="font-display text-3xl text-foreground font-semibold">Nenhum programa disponível</h1>
+            <p className="text-muted-foreground">Ainda não há programas cadastrados. Em breve novos conteúdos estarão disponíveis!</p>
           </div>
         </section>
       )}
