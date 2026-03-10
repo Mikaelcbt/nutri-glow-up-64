@@ -148,7 +148,7 @@ export default function AdminChallenges() {
       if (!data) { toast.error('Desafio não foi criado - verifique as permissões RLS'); setSaving(false); return; }
 
       const daysToInsert = Array.from({ length: form.total_dias }, (_, i) => ({
-        desafio_id: data.id, numero_dia: i + 1, titulo: '', video_url: '', pdf_url: '', alimentos: '', liberado: false,
+        desafio_id: data.id, numero_dia: i + 1, titulo: `Dia ${i + 1}`, liberado: false,
       }));
       const { error: daysError } = await supabase.from('desafio_dias').insert(daysToInsert);
       if (daysError) toast.error('Desafio criado mas erro ao gerar dias: ' + daysError.message);
