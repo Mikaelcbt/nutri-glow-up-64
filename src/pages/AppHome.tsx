@@ -20,6 +20,7 @@ interface Product {
 interface Module {
   id: string; product_id: string; titulo: string; descricao: string;
   ordem: number; texto_destaque_palavra: string; cor_destaque: string;
+  imagem_url?: string;
 }
 
 export default function AppHome() {
