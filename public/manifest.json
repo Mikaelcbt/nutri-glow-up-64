@@ -1,0 +1,14 @@
+{
+  "name": "JP NutriCare",
+  "short_name": "NutriCare",
+  "description": "Sua plataforma de nutrição e transformação corporal",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#FAFAF7",
+  "theme_color": "#22C55E",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
