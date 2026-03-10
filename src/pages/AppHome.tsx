@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
-import { AnimatedPage, staggerContainer, fadeInUp, fadeInRight } from '@/components/AnimatedPage';
+import { AnimatedPage, staggerContainer, fadeInUp } from '@/components/AnimatedPage';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
 
 interface Product {
   id: string; nome: string; slug: string; descricao: string;
   imagem_capa_url: string; texto_imagem_capa: string; cor_destaque: string; is_active: boolean;
+  modules?: { id: string; titulo: string; descricao: string; ordem: number; texto_destaque_palavra: string; cor_destaque: string; lessons: { id: string }[] }[];
 }
 interface Module {
   id: string; product_id: string; titulo: string; descricao: string;
@@ -38,17 +39,25 @@ export default function AppHome() {
   const animatedModules = useAnimatedNumber(moduleStats.modules);
   const animatedLessons = useAnimatedNumber(moduleStats.lessons);
 
-  useEffect(() => { if (user) { console.log('[AppHome] user ready, loading data...', user.id); loadData(); } }, [user]);
+  useEffect(() => {
+    if (user) {
+      console.log('[AppHome] user ready, loading data...', user.id);
+      loadData();
+    }
+  }, [user]);
 
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      // All active products — visible to all authenticated users
+      // Fetch all active products with nested modules and lessons
       const { data: products, error: prodErr } = await supabase
-        .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
+        .from('products')
+        .select('*, modules(*, lessons(id))')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-      console.log('[AppHome] products query:', { products, error: prodErr, userId: user.id });
+      console.log('[AppHome] products query:', { count: products?.length, error: prodErr });
 
       if (prodErr) {
         console.error('[AppHome] Erro ao buscar produtos:', prodErr);
@@ -57,7 +66,13 @@ export default function AppHome() {
         return;
       }
 
-      if (!products?.length) { setAllProducts([]); setLoading(false); return; }
+      if (!products?.length) {
+        console.log('[AppHome] Nenhum produto ativo encontrado');
+        setAllProducts([]);
+        setLoading(false);
+        return;
+      }
+
       setAllProducts(products);
 
       // User associations
@@ -66,7 +81,7 @@ export default function AppHome() {
         .eq('user_id', user.id).eq('status', 'ativo');
 
       if (assocErr) console.error('[AppHome] Erro ao buscar associações:', assocErr);
-      console.log('[AppHome] associations:', { assocs });
+      console.log('[AppHome] associations:', { count: assocs?.length });
 
       const map: Record<string, boolean> = {};
       (assocs ?? []).forEach(a => { map[a.product_id] = true; });
@@ -79,29 +94,30 @@ export default function AppHome() {
       setFeaturedProduct(featured);
       setFeaturedHasAccess(hasAccess);
 
-      // Modules & stats for featured
-      const { data: mods } = await supabase
-        .from('modules').select('*').eq('product_id', featured.id).order('ordem');
-      if (mods) setModules(mods);
+      // Use nested modules from the query
+      const featuredModules = featured.modules || [];
+      const sortedMods = [...featuredModules].sort((a: any, b: any) => a.ordem - b.ordem);
+      setModules(sortedMods.map((m: any) => ({ ...m, product_id: featured.id })));
 
-      const { data: allLessons } = await supabase
-        .from('lessons').select('id, module_id').in('module_id', (mods || []).map(m => m.id));
-      const totalLessons = allLessons?.length || 0;
-      setModuleStats({ modules: mods?.length || 0, lessons: totalLessons });
+      const totalLessons = featuredModules.reduce((sum: number, m: any) => sum + (m.lessons?.length || 0), 0);
+      setModuleStats({ modules: featuredModules.length, lessons: totalLessons });
 
       // Progress
       if (hasAccess && totalLessons > 0) {
+        const allLessonIds = featuredModules.flatMap((m: any) => (m.lessons || []).map((l: any) => l.id));
         const { data: progress } = await supabase
           .from('rastreamento_progresso').select('lesson_id')
-          .eq('user_id', user.id).eq('concluido', true);
-        const completedIds = new Set(progress?.map(p => p.lesson_id) || []);
-        const done = allLessons?.filter(l => completedIds.has(l.id)).length || 0;
+          .eq('user_id', user.id).eq('concluido', true).in('lesson_id', allLessonIds);
+        const done = progress?.length || 0;
         setProductProgress((done / totalLessons) * 100);
       } else {
         setProductProgress(0);
       }
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error('[AppHome] Erro inesperado:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const scrollCarousel = (d: 'left' | 'right') => {
@@ -117,6 +133,14 @@ export default function AppHome() {
   };
 
   const moduleColors = ['#22C55E', '#3B82F6', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6'];
+
+  // Get greeting based on time
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Bom dia';
+    if (h < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
 
   if (loading) {
     return (
@@ -136,8 +160,9 @@ export default function AppHome() {
       <AnimatedPage>
         <motion.div className="px-8 pt-6 md:px-16" variants={fadeInUp}>
           <h2 className="text-lg text-muted-foreground">
-            Olá, <span className="text-foreground font-semibold">{profile?.nome_completo || 'Usuário'}</span>! 👋
+            {getGreeting()}, <span className="text-foreground font-semibold">{profile?.nome_completo || 'Usuário'}</span>! 👋
           </h2>
+          <p className="text-sm text-muted-foreground mt-1">Continue sua jornada de transformação.</p>
         </motion.div>
 
         {/* Hero */}
@@ -222,6 +247,8 @@ export default function AppHome() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {allProducts.map((p, i) => {
                 const hasAccess = isAdmin || !!accessMap[p.id];
+                const modCount = p.modules?.length || 0;
+                const lessonCount = p.modules?.reduce((s, m: any) => s + (m.lessons?.length || 0), 0) || 0;
                 return (
                   <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
                     className="group rounded-2xl border border-border bg-card overflow-hidden shadow-card hover:shadow-soft transition-all duration-300 hover:-translate-y-1"
@@ -241,6 +268,10 @@ export default function AppHome() {
                     <div className="p-5 space-y-3">
                       <h3 className="font-display text-xl font-semibold text-foreground">{p.nome}</h3>
                       <p className="text-sm text-muted-foreground line-clamp-2">{p.descricao}</p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {modCount} módulos</span>
+                        <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> {lessonCount} aulas</span>
+                      </div>
                       {hasAccess ? (
                         <Button asChild size="sm" className="w-full active:scale-[0.97] transition-transform">
                           <Link to={`/app/programa/${p.slug}`}><Play className="mr-2 h-4 w-4" /> Continuar</Link>
@@ -300,6 +331,14 @@ export default function AppHome() {
             </div>
           </motion.section>
         )}
+
+        {/* Footer */}
+        <footer className="border-t border-border bg-card/50 px-8 py-6 md:px-16 mt-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>© 2026 JP NutriCare. Todos os direitos reservados.</span>
+            <span>v1.0.0</span>
+          </div>
+        </footer>
 
         <AccessRequestModal open={!!requestModal} onClose={() => setRequestModal(null)} programName={requestModal || undefined} />
       </AnimatedPage>

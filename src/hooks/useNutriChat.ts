@@ -16,9 +16,13 @@ export function useNutriChat() {
   const [sending, setSending] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
 
-  // Check if user has active association
+  // Check if user has active association or is admin
   useEffect(() => {
     if (!user) return;
+    if (profile?.role === 'admin') {
+      setHasAccess(true);
+      return;
+    }
     supabase
       .from('associacoes')
       .select('id')
@@ -26,18 +30,23 @@ export function useNutriChat() {
       .eq('status', 'ativo')
       .limit(1)
       .then(({ data }) => setHasAccess((data?.length ?? 0) > 0));
-  }, [user]);
+  }, [user, profile]);
 
   // Load history
   const loadHistory = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('conversas_ia')
-      .select('id, role, conteudo, criado_em')
-      .eq('user_id', user.id)
-      .order('criado_em', { ascending: true });
-    if (data) setMessages(data as ChatMessage[]);
+    try {
+      const { data, error } = await supabase
+        .from('conversas_ia')
+        .select('id, role, conteudo, criado_em')
+        .eq('user_id', user.id)
+        .order('criado_em', { ascending: true });
+      if (error) console.error('[NutriIA] Load history error:', error);
+      if (data) setMessages(data as ChatMessage[]);
+    } catch (err) {
+      console.error('[NutriIA] Unexpected error loading history:', err);
+    }
     setLoading(false);
   }, [user]);
 
@@ -45,64 +54,79 @@ export function useNutriChat() {
     if (!user || !profile || sending) return;
     setSending(true);
 
-    // 1. Save user message
-    const { data: inserted } = await supabase
-      .from('conversas_ia')
-      .insert({ user_id: user.id, role: 'user', conteudo: text })
-      .select()
-      .single();
-
-    if (inserted) {
-      setMessages(prev => [...prev, inserted as ChatMessage]);
-    }
-
     try {
-      // 2. Get context
-      const [{ data: programs }, { data: progressData }, { data: history }] = await Promise.all([
-        supabase
-          .from('associacoes')
-          .select('product:products(nome, descricao), status')
-          .eq('user_id', user.id)
-          .eq('status', 'ativo'),
-        supabase
-          .from('rastreamento_progresso')
-          .select('lesson:lessons(titulo, module:modules(titulo))')
-          .eq('user_id', user.id)
-          .eq('concluido', true),
-        supabase
-          .from('conversas_ia')
-          .select('role, conteudo')
-          .eq('user_id', user.id)
-          .order('criado_em', { ascending: false })
-          .limit(10),
-      ]);
+      // 1. Save user message
+      const { data: inserted, error: insertErr } = await supabase
+        .from('conversas_ia')
+        .insert({ user_id: user.id, role: 'user', conteudo: text })
+        .select()
+        .single();
 
-      // 3. Call edge function
-      const { data: aiData, error } = await supabase.functions.invoke('ai-nutritionist', {
+      if (insertErr) console.error('[NutriIA] Insert user msg error:', insertErr);
+      if (inserted) {
+        setMessages(prev => [...prev, inserted as ChatMessage]);
+      }
+
+      // 2. Get context (don't block on errors)
+      let programs: any[] = [];
+      let progressData: any[] = [];
+
+      try {
+        const [programsRes, progressRes] = await Promise.all([
+          supabase
+            .from('associacoes')
+            .select('product:products(nome, descricao), status')
+            .eq('user_id', user.id)
+            .eq('status', 'ativo'),
+          supabase
+            .from('rastreamento_progresso')
+            .select('lesson:lessons(titulo, module:modules(titulo))')
+            .eq('user_id', user.id)
+            .eq('concluido', true),
+        ]);
+        programs = programsRes.data ?? [];
+        progressData = progressRes.data ?? [];
+      } catch (ctxErr) {
+        console.error('[NutriIA] Context fetch error (non-blocking):', ctxErr);
+      }
+
+      // 3. Build messages for the AI
+      const recentMessages = messages.slice(-10).map(m => ({ role: m.role, content: m.conteudo }));
+      recentMessages.push({ role: 'user', content: text });
+
+      // 4. Call edge function
+      console.log('[NutriIA] Calling edge function...');
+      const { data: aiData, error: fnError } = await supabase.functions.invoke('ai-nutritionist', {
         body: {
-          messages: (history ?? []).reverse().map((m: any) => ({ role: m.role, content: m.conteudo })),
-          user_name: profile.nome_completo,
-          programs: programs ?? [],
-          progress: progressData ?? [],
+          messages: recentMessages,
+          user_name: profile.nome_completo || 'Aluno',
+          programs,
+          progress: progressData,
         },
       });
 
-      if (error) throw error;
+      if (fnError) {
+        console.error('[NutriIA] Edge function error:', fnError);
+        throw fnError;
+      }
 
-      const responseText = aiData?.response || 'Desculpe, não consegui processar sua pergunta.';
+      console.log('[NutriIA] Edge function response:', aiData);
 
-      // 4. Save AI response
-      const { data: aiInserted } = await supabase
+      const responseText = aiData?.response || aiData?.message || 'Desculpe, não consegui processar sua pergunta.';
+
+      // 5. Save AI response
+      const { data: aiInserted, error: aiInsertErr } = await supabase
         .from('conversas_ia')
         .insert({ user_id: user.id, role: 'assistant', conteudo: responseText })
         .select()
         .single();
 
+      if (aiInsertErr) console.error('[NutriIA] Insert AI msg error:', aiInsertErr);
       if (aiInserted) {
         setMessages(prev => [...prev, aiInserted as ChatMessage]);
       }
     } catch (err) {
-      console.error('NutriIA error:', err);
+      console.error('[NutriIA] Error:', err);
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -113,7 +137,7 @@ export function useNutriChat() {
     } finally {
       setSending(false);
     }
-  }, [user, profile, sending]);
+  }, [user, profile, sending, messages]);
 
   const clearHistory = useCallback(async () => {
     if (!user) return;
