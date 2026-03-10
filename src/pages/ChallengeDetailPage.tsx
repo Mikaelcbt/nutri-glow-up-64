@@ -6,8 +6,9 @@ import AppLayout from '@/components/AppLayout';
 import { AnimatedPage, fadeInUp } from '@/components/AnimatedPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Lock, Calendar, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, Calendar, CheckCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Challenge {
@@ -24,6 +25,7 @@ interface ChallengeDay {
   numero_dia: number;
   titulo: string;
   liberado: boolean;
+  imagem_url?: string;
 }
 
 export default function ChallengeDetailPage() {
@@ -70,7 +72,7 @@ export default function ChallengeDetailPage() {
       <AppLayout>
         <div className="px-8 py-8 md:px-16 space-y-6">
           <Skeleton className="h-64 w-full rounded-2xl" />
-          <div className="flex gap-4">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-36 w-28 rounded-xl flex-shrink-0" />)}</div>
+          <div className="flex gap-4">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-[240px] w-[180px] rounded-xl flex-shrink-0" />)}</div>
         </div>
       </AppLayout>
     );
@@ -89,8 +91,6 @@ export default function ChallengeDetailPage() {
   const releasedDays = days.filter(d => d.liberado).length;
   const completedCount = completedDays.size;
   const progressPct = challenge.total_dias > 0 ? Math.round((completedCount / challenge.total_dias) * 100) : 0;
-
-  // Find current day = first released & not completed
   const currentDay = days.find(d => d.liberado && !completedDays.has(d.numero_dia));
 
   return (
@@ -116,7 +116,6 @@ export default function ChallengeDetailPage() {
                 <span>{releasedDays} liberados</span>
                 {completedCount > 0 && <span className="text-primary font-medium">{completedCount} concluídos</span>}
               </div>
-              {/* Progress bar */}
               {completedCount > 0 && (
                 <div className="space-y-1 max-w-md">
                   <div className="flex justify-between text-xs text-muted-foreground">
@@ -140,7 +139,7 @@ export default function ChallengeDetailPage() {
             </div>
           </div>
 
-          <div ref={carouselRef} className="flex gap-4 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
+          <div ref={carouselRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
             {days.map((day, i) => {
               const completed = completedDays.has(day.numero_dia);
               const isCurrent = currentDay?.id === day.id;
@@ -155,24 +154,72 @@ export default function ChallengeDetailPage() {
                   {day.liberado ? (
                     <Link
                       to={`/app/desafios/${challenge.id}/dia/${day.numero_dia}`}
-                      className={`flex flex-col items-center justify-center w-28 h-36 rounded-xl border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${
-                        completed
-                          ? 'bg-primary/10 border-primary text-primary'
-                          : isCurrent
-                          ? 'bg-card border-primary shadow-md ring-2 ring-primary/20'
-                          : 'bg-card border-border text-foreground hover:border-primary/50'
-                      }`}
+                      className="group relative block overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/15 hover:scale-[1.03]"
+                      style={{ width: '180px', height: '240px' }}
                     >
-                      {completed && <CheckCircle className="h-5 w-5 mb-1 text-primary" />}
-                      <span className="text-2xl font-bold">{day.numero_dia}</span>
-                      <span className="text-[11px] text-center px-2 mt-1 line-clamp-2 text-muted-foreground">{day.titulo || `Dia ${day.numero_dia}`}</span>
-                      {isCurrent && <span className="text-[10px] text-primary font-medium mt-1">Atual</span>}
+                      {/* Background */}
+                      {day.imagem_url ? (
+                        <div className="absolute inset-0">
+                          <img src={day.imagem_url} alt={day.titulo} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                        </div>
+                      ) : (
+                        <div className={`absolute inset-0 ${
+                          completed
+                            ? 'bg-gradient-to-br from-primary/20 to-primary/10'
+                            : isCurrent
+                              ? 'bg-gradient-to-br from-primary/15 to-accent/20'
+                              : 'bg-gradient-to-br from-primary/10 to-primary/5'
+                        }`} />
+                      )}
+
+                      {/* Border */}
+                      <div className={`absolute inset-0 rounded-2xl border-2 transition-colors duration-300 ${
+                        completed
+                          ? 'border-primary'
+                          : isCurrent
+                            ? 'border-primary shadow-md ring-2 ring-primary/20'
+                            : 'border-border/50 group-hover:border-primary/50'
+                      }`} />
+
+                      {/* Completed check */}
+                      {completed && (
+                        <div className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow-md">
+                          <Check className="h-4 w-4" strokeWidth={3} />
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <div className="relative flex flex-col items-center justify-center h-full p-4 text-center">
+                        <span className={`text-4xl font-bold leading-none ${day.imagem_url ? 'text-white' : 'text-foreground'}`}>
+                          {day.numero_dia}
+                        </span>
+                        <span className={`text-xs mt-2 line-clamp-2 font-medium ${day.imagem_url ? 'text-white/90' : 'text-muted-foreground'}`}>
+                          {day.titulo || `Dia ${day.numero_dia}`}
+                        </span>
+                        <div className="mt-3">
+                          <Badge variant="default" className="text-[10px] bg-primary/90 border-0">
+                            Liberado
+                          </Badge>
+                        </div>
+                        {isCurrent && (
+                          <span className={`text-[10px] font-semibold mt-1.5 ${day.imagem_url ? 'text-white' : 'text-primary'}`}>
+                            ▶ Atual
+                          </span>
+                        )}
+                      </div>
                     </Link>
                   ) : (
-                    <div className="flex flex-col items-center justify-center w-28 h-36 rounded-xl border border-border bg-muted/30 text-muted-foreground/50 cursor-not-allowed opacity-60">
-                      <Lock className="h-5 w-5 mb-1" />
-                      <span className="text-2xl font-bold">{day.numero_dia}</span>
-                      <span className="text-[11px] mt-1">Bloqueado</span>
+                    <div
+                      className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted/20 text-muted-foreground/50 cursor-not-allowed"
+                      style={{ width: '180px', height: '240px' }}
+                    >
+                      <Lock className="h-6 w-6 mb-2 opacity-40" />
+                      <span className="text-3xl font-bold opacity-40">{day.numero_dia}</span>
+                      <span className="text-xs mt-2 opacity-50">{day.titulo || `Dia ${day.numero_dia}`}</span>
+                      <Badge variant="secondary" className="text-[10px] mt-3 opacity-60">
+                        🔒 Bloqueado
+                      </Badge>
                     </div>
                   )}
                 </motion.div>
