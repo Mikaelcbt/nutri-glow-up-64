@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Package, Layers, BookOpen, Users, LogOut, Home, ImageIcon, FileText, LayoutDashboard } from 'lucide-react';
+import { Package, Layers, BookOpen, Users, LogOut, Home, ImageIcon, FileText, LayoutDashboard, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
