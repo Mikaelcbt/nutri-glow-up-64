@@ -179,8 +179,8 @@ export default function AppHome() {
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-accent">
               <Clock className="h-8 w-8 text-accent-foreground" />
             </div>
-            <h1 className="font-display text-3xl text-foreground font-semibold">Aguardando liberação de acesso</h1>
-            <p className="text-muted-foreground">Seu acesso a um programa ainda não foi liberado. Entre em contato com a nutricionista para mais informações.</p>
+            <h1 className="font-display text-3xl text-foreground font-semibold">Nenhum programa disponível</h1>
+            <p className="text-muted-foreground">Ainda não há programas cadastrados. Em breve novos conteúdos estarão disponíveis!</p>
           </div>
         </section>
       )}
