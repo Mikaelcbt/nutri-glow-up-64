@@ -51,11 +51,24 @@ export default function AppHome() {
     setLoading(true);
     try {
       // Fetch all active products with nested modules and lessons
-      const { data: products, error: prodErr } = await supabase
+      // Try nested query first, fall back to simple query
+      let products: any[] | null = null;
+      let prodErr: any = null;
+
+      const res1 = await supabase
         .from('products')
         .select('*, modules(*, lessons(id))')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+
+      if (res1.error) {
+        console.warn('[AppHome] Nested query failed, trying simple query:', res1.error);
+        const res2 = await supabase.from('products').select('*').eq('is_active', true);
+        products = res2.data;
+        prodErr = res2.error;
+      } else {
+        products = res1.data;
+        prodErr = res1.error;
+      }
 
       console.log('[AppHome] products query:', { count: products?.length, error: prodErr });
 
