@@ -235,12 +235,32 @@ export default function AdminChallenges() {
     setDaysLoading(false);
   };
 
+  const notifyUsersAboutDay = async (challengeTitle: string, challengeId: string, dayNum: number) => {
+    // Get all user profiles to notify
+    const { data: users } = await supabase.from('profiles').select('id');
+    if (!users || users.length === 0) return;
+
+    const notifications = users.map(u => ({
+      user_id: u.id,
+      titulo: '🔓 Novo dia liberado!',
+      mensagem: `Dia ${dayNum} do desafio "${challengeTitle}" já está disponível!`,
+      link: `/app/desafios/${challengeId}/dia/${dayNum}`,
+      lida: false,
+    }));
+
+    await supabase.from('notificacoes').insert(notifications);
+  };
+
   const toggleDayLiberado = async (day: DayData) => {
     const newValue = !day.liberado;
     const { error } = await supabase.from('desafio_dias').update({ liberado: newValue }).eq('id', day.id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     setDays(prev => prev.map(d => d.id === day.id ? { ...d, liberado: newValue } : d));
-    toast.success(newValue ? `Dia ${day.numero_dia} liberado` : `Dia ${day.numero_dia} bloqueado`);
+    
+    if (newValue && managingChallenge) {
+      await notifyUsersAboutDay(managingChallenge.titulo, managingChallenge.id, day.numero_dia);
+    }
+    toast.success(newValue ? `Dia ${day.numero_dia} liberado e notificações enviadas!` : `Dia ${day.numero_dia} bloqueado`);
   };
 
   const bulkToggle = async (liberado: boolean) => {
@@ -257,7 +277,11 @@ export default function AdminChallenges() {
     const { error } = await supabase.from('desafio_dias').update({ liberado: true }).eq('id', nextBlocked.id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     setDays(prev => prev.map(d => d.id === nextBlocked.id ? { ...d, liberado: true } : d));
-    toast.success(`Dia ${nextBlocked.numero_dia} liberado!`);
+    
+    if (managingChallenge) {
+      await notifyUsersAboutDay(managingChallenge.titulo, managingChallenge.id, nextBlocked.numero_dia);
+    }
+    toast.success(`Dia ${nextBlocked.numero_dia} liberado e notificações enviadas!`);
   };
 
   const handleDayPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
