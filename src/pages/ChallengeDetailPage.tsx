@@ -198,7 +198,7 @@ export default function ChallengeDetailPage() {
 
                   {/* Main content */}
                   <div className="relative flex flex-col items-center justify-center h-full p-4 text-center z-10 pointer-events-none">
-                    <span className={`text-4xl font-bold leading-none ${textColor}`}>
+                    <span className={`font-display text-5xl font-bold leading-none ${textColor}`}>
                       {day.numero_dia}
                     </span>
                     <span className={`text-xs mt-2 line-clamp-2 font-medium ${subTextColor}`}>

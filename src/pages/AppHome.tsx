@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, Play, BookOpen, Layers, Clock, Lock } from '
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { AnimatedPage, staggerContainer, fadeInUp } from '@/components/AnimatedPage';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
 
@@ -23,6 +23,28 @@ interface Module {
   imagem_url?: string;
 }
 
+// Floating particles component
+function FloatingParticles() {
+  const particles = Array.from({ length: 8 }, (_, i) => ({
+    id: i,
+    left: `${10 + Math.random() * 80}%`,
+    top: `${10 + Math.random() * 80}%`,
+    delay: `${Math.random() * 4}s`,
+    size: 3 + Math.random() * 4,
+  }));
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className="particle"
+          style={{ left: p.left, top: p.top, animationDelay: p.delay, width: p.size, height: p.size }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function AppHome() {
   const { user, profile } = useAuth();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -35,10 +57,15 @@ export default function AppHome() {
   const [loading, setLoading] = useState(true);
   const [requestModal, setRequestModal] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
   const isAdmin = profile?.role === 'admin';
 
   const animatedModules = useAnimatedNumber(moduleStats.modules);
   const animatedLessons = useAnimatedNumber(moduleStats.lessons);
+
+  // Parallax
+  const { scrollY } = useScroll();
+  const heroImageY = useTransform(scrollY, [0, 600], [0, 150]);
 
   useEffect(() => {
     if (user) {
@@ -51,8 +78,6 @@ export default function AppHome() {
     if (!user) return;
     setLoading(true);
     try {
-      // Fetch all active products with nested modules and lessons
-      // Try nested query first, fall back to simple query
       let products: any[] | null = null;
       let prodErr: any = null;
 
@@ -89,7 +114,6 @@ export default function AppHome() {
 
       setAllProducts(products);
 
-      // User associations
       const { data: assocs, error: assocErr } = await supabase
         .from('associacoes').select('product_id, status')
         .eq('user_id', user.id).eq('status', 'ativo');
@@ -101,14 +125,12 @@ export default function AppHome() {
       (assocs ?? []).forEach(a => { map[a.product_id] = true; });
       setAccessMap(map);
 
-      // Featured: first product with access, or first product overall
       const withAccess = products.filter(p => map[p.id] || isAdmin);
       const featured = withAccess[0] || products[0];
       const hasAccess = isAdmin || !!map[featured.id];
       setFeaturedProduct(featured);
       setFeaturedHasAccess(hasAccess);
 
-      // Modules for featured product — use nested data or fetch separately
       let featuredModules: any[] = featured.modules || [];
       if (featuredModules.length === 0) {
         const { data: mods } = await supabase
@@ -121,7 +143,6 @@ export default function AppHome() {
       const totalLessons = featuredModules.reduce((sum: number, m: any) => sum + (m.lessons?.length || 0), 0);
       setModuleStats({ modules: featuredModules.length, lessons: totalLessons });
 
-      // Progress
       if (hasAccess && totalLessons > 0) {
         const allLessonIds = featuredModules.flatMap((m: any) => (m.lessons || []).map((l: any) => l.id));
         if (allLessonIds.length > 0) {
@@ -153,9 +174,8 @@ export default function AppHome() {
     );
   };
 
-  const moduleColors = ['#22C55E', '#3B82F6', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6'];
+  const moduleColors = ['#16A34A', '#3B82F6', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6'];
 
-  // Get greeting based on time
   const getGreeting = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Bom dia';
@@ -186,19 +206,28 @@ export default function AppHome() {
           <p className="text-sm text-muted-foreground mt-1">Continue sua jornada de transformação.</p>
         </motion.div>
 
-        {/* Hero */}
+        {/* Hero with parallax */}
         {featuredProduct ? (
-          <section className="relative h-[80vh] w-full overflow-hidden">
-            <motion.div className="absolute inset-0" initial={{ scale: 1.05, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }}>
-              <img src={featuredProduct.imagem_capa_url || '/placeholder.svg'} alt={featuredProduct.nome} className="h-full w-full object-cover object-center" />
-              <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+          <section ref={heroRef} className="relative h-[80vh] w-full overflow-hidden">
+            {/* Parallax background image */}
+            <motion.div className="absolute inset-0" style={{ y: heroImageY }} initial={{ scale: 1.05, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }}>
+              <img src={featuredProduct.imagem_capa_url || '/placeholder.svg'} alt={featuredProduct.nome} className="h-[calc(100%+150px)] w-full object-cover object-center" />
             </motion.div>
+
+            {/* Mesh gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+            <div className="absolute inset-0" style={{
+              background: 'radial-gradient(ellipse at top left, hsl(142 76% 93% / 0.3), transparent 50%), radial-gradient(ellipse at center, rgba(255,255,255,0.1), transparent 60%)'
+            }} />
+
+            {/* Floating particles */}
+            <FloatingParticles />
 
             <div className="relative flex h-full items-center px-8 md:px-16">
               <motion.div className="max-w-xl space-y-6" variants={staggerContainer} initial="initial" animate="animate">
-                <motion.span variants={fadeInUp} className="inline-block rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent-foreground">
-                  {featuredHasAccess ? 'Programa em destaque' : 'Programa disponível'}
+                <motion.span variants={fadeInUp} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent-foreground">
+                  {featuredHasAccess ? '✦ Programa em destaque' : 'Programa disponível'}
                 </motion.span>
                 <motion.h1 variants={fadeInUp} className="font-display text-5xl leading-tight text-foreground md:text-7xl font-semibold">{featuredProduct.nome}</motion.h1>
                 <motion.p variants={fadeInUp} className="text-base leading-relaxed text-muted-foreground md:text-lg">{featuredProduct.descricao}</motion.p>
@@ -209,19 +238,19 @@ export default function AppHome() {
                 <motion.div variants={fadeInUp} className="flex gap-3">
                   {featuredHasAccess ? (
                     <>
-                      <Button asChild size="lg" className="h-12 px-8 text-base font-semibold active:scale-[0.97] transition-transform">
+                      <Button asChild size="lg" className="btn-ripple h-12 px-8 text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}><Play className="mr-2 h-5 w-5" /> Continuar programa</Link>
                       </Button>
-                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold border-primary text-primary hover:bg-accent active:scale-[0.97] transition-transform">
+                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold border-primary text-primary hover:bg-accent active:scale-[0.97] transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}>Saiba mais</Link>
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Button size="lg" onClick={() => setRequestModal(featuredProduct.nome)} className="h-12 px-8 text-base font-semibold active:scale-[0.97] transition-transform">
+                      <Button size="lg" onClick={() => setRequestModal(featuredProduct.nome)} className="btn-ripple h-12 px-8 text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                         Solicitar acesso
                       </Button>
-                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold active:scale-[0.97] transition-transform">
+                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold active:scale-[0.97] transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}>Ver detalhes</Link>
                       </Button>
                     </>
@@ -230,18 +259,21 @@ export default function AppHome() {
               </motion.div>
             </div>
 
+            {/* Progress / access bar */}
             {featuredHasAccess && (
-              <motion.div className="absolute bottom-0 left-0 right-0 bg-card/80 backdrop-blur-sm px-8 py-4 md:px-16 border-t border-border" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+              <motion.div className="absolute bottom-0 left-0 right-0 glass-card px-8 py-4 md:px-16 border-t border-white/30" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
                 <div className="flex items-center gap-4">
                   <span className="text-xs text-muted-foreground font-medium">Seu progresso</span>
-                  <Progress value={productProgress} className="h-2 flex-1" />
+                  <motion.div className="flex-1" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.8, duration: 0.6 }} style={{ transformOrigin: 'left' }}>
+                    <Progress value={productProgress} className="h-2" />
+                  </motion.div>
                   <span className="text-xs text-primary font-bold">{Math.round(productProgress)}%</span>
                 </div>
               </motion.div>
             )}
 
             {!featuredHasAccess && (
-              <motion.div className="absolute bottom-0 left-0 right-0 bg-card/80 backdrop-blur-sm px-8 py-4 md:px-16 border-t border-border" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+              <motion.div className="absolute bottom-0 left-0 right-0 glass-card px-8 py-4 md:px-16 border-t border-white/30" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Lock className="h-4 w-4" />
                   <span className="text-xs font-medium">Sem acesso — solicite para começar sua jornada</span>
@@ -261,7 +293,7 @@ export default function AppHome() {
           </section>
         )}
 
-        {/* All Programs Grid */}
+        {/* All Programs Grid — glassmorphism cards */}
         {allProducts.length > 1 && (
           <motion.section className="px-8 py-12 md:px-16" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <h2 className="mb-6 font-display text-3xl font-semibold text-foreground">Todos os Programas</h2>
@@ -271,8 +303,8 @@ export default function AppHome() {
                 const modCount = p.modules?.length || 0;
                 const lessonCount = p.modules?.reduce((s, m: any) => s + (m.lessons?.length || 0), 0) || 0;
                 return (
-                  <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                    className="group rounded-2xl border border-border bg-card overflow-hidden shadow-card hover:shadow-soft transition-all duration-300 hover:-translate-y-1"
+                  <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                    className="group glass-card rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-3 hover:shadow-green-glow hover:border-primary/30"
                   >
                     <div className="relative overflow-hidden">
                       {p.imagem_capa_url ? (
@@ -280,8 +312,9 @@ export default function AppHome() {
                       ) : (
                         <div className="h-44 w-full bg-accent flex items-center justify-center"><BookOpen className="h-10 w-10 text-accent-foreground/40" /></div>
                       )}
+                      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-primary/10 to-transparent" />
                       <div className="absolute top-3 right-3">
-                        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${hasAccess ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold backdrop-blur-sm ${hasAccess ? 'bg-primary/90 text-primary-foreground' : 'bg-white/70 text-muted-foreground'}`}>
                           {hasAccess ? '✓ Acesso ativo' : 'Sem acesso'}
                         </span>
                       </div>
@@ -294,11 +327,11 @@ export default function AppHome() {
                         <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> {lessonCount} aulas</span>
                       </div>
                       {hasAccess ? (
-                        <Button asChild size="sm" className="w-full active:scale-[0.97] transition-transform">
+                        <Button asChild size="sm" className="btn-ripple w-full bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-sm hover:shadow-green-glow hover:-translate-y-0.5 transition-all duration-300">
                           <Link to={`/app/programa/${p.slug}`}><Play className="mr-2 h-4 w-4" /> Continuar</Link>
                         </Button>
                       ) : (
-                        <Button variant="outline" size="sm" className="w-full active:scale-[0.97] transition-transform" onClick={() => setRequestModal(p.nome)}>
+                        <Button variant="outline" size="sm" className="w-full border-primary/30 text-primary hover:bg-accent active:scale-[0.97] transition-all duration-300" onClick={() => setRequestModal(p.nome)}>
                           Solicitar acesso
                         </Button>
                       )}
@@ -310,14 +343,14 @@ export default function AppHome() {
           </motion.section>
         )}
 
-        {/* Module Carousel */}
+        {/* Module Carousel — glassmorphism */}
         {modules.length > 0 && (
           <motion.section className="px-8 py-12 md:px-16" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-display text-3xl font-semibold text-foreground">Módulos do Programa</h2>
               <div className="flex gap-2">
-                <button onClick={() => scrollCarousel('left')} className="rounded-full border border-border p-2 text-foreground hover:bg-secondary transition-all"><ChevronLeft className="h-5 w-5" /></button>
-                <button onClick={() => scrollCarousel('right')} className="rounded-full border border-border p-2 text-foreground hover:bg-secondary transition-all"><ChevronRight className="h-5 w-5" /></button>
+                <button onClick={() => scrollCarousel('left')} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronLeft className="h-5 w-5" /></button>
+                <button onClick={() => scrollCarousel('right')} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronRight className="h-5 w-5" /></button>
               </div>
             </div>
             <div ref={carouselRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
@@ -326,10 +359,9 @@ export default function AppHome() {
                 return (
                   <motion.div key={mod.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}>
                     <Link to={`/app/modulo/${mod.id}`}
-                      className="group relative flex-shrink-0 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-2 hover:shadow-soft block"
+                      className="group relative flex-shrink-0 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-3 hover:shadow-green-glow block"
                       style={{ width: 200, height: 320 }}
                     >
-                      {/* Module image or fallback */}
                       {(mod.imagem_url || featuredProduct?.imagem_capa_url) ? (
                         <img
                           src={mod.imagem_url || featuredProduct?.imagem_capa_url}
@@ -340,6 +372,8 @@ export default function AppHome() {
                         <div className="absolute inset-0 bg-card" />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                      {/* Green gradient footer on image */}
+                      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-primary/10 to-transparent" />
                       <div className="absolute top-4 left-0 right-0 text-center">
                         <span className="inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-card" style={{ backgroundColor: color }}>
                           Módulo {i + 1}
