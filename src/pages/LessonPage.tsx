@@ -3,10 +3,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
+import AccessRequestModal from '@/components/AccessRequestModal';
 import Breadcrumb from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Play, Trophy, PartyPopper } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Play, Trophy, PartyPopper, Lock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,13 +15,13 @@ import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedP
 
 interface LessonData {
   id: string; titulo: string; descricao: string; conteudo: string;
-  video_url: string; ordem: number; module_id: string;
+  video_url: string; ordem: number; module_id: string; is_preview: boolean;
 }
 interface SiblingLesson { id: string; titulo: string; ordem: number; }
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [completed, setCompleted] = useState(false);
@@ -29,23 +30,23 @@ export default function LessonPage() {
   const [moduleLessons, setModuleLessons] = useState<SiblingLesson[]>([]);
   const [moduleName, setModuleName] = useState('');
   const [productSlug, setProductSlug] = useState('');
+  const [productName, setProductName] = useState('');
   const [showModuleComplete, setShowModuleComplete] = useState(false);
   const [showProgramComplete, setShowProgramComplete] = useState(false);
   const [autoAdvanceTimer, setAutoAdvanceTimer] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(5);
   const [showCheckAnim, setShowCheckAnim] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => { if (id) loadLesson(); }, [id, user]);
-  useEffect(() => {
-    return () => { if (autoAdvanceTimer) clearInterval(autoAdvanceTimer); };
-  }, [autoAdvanceTimer]);
+  useEffect(() => { return () => { if (autoAdvanceTimer) clearInterval(autoAdvanceTimer); }; }, [autoAdvanceTimer]);
 
   const loadLesson = async () => {
-    setLesson(null);
-    setShowModuleComplete(false);
-    setShowProgramComplete(false);
-    setShowCheckAnim(false);
-    setCountdown(5);
+    setLesson(null); setShowModuleComplete(false); setShowProgramComplete(false);
+    setShowCheckAnim(false); setCountdown(5); setAccessChecked(false);
     if (autoAdvanceTimer) clearInterval(autoAdvanceTimer);
     try {
       const { data, error } = await supabase.from('lessons').select('*').eq('id', id).maybeSingle();
@@ -56,8 +57,18 @@ export default function LessonPage() {
       const { data: mod } = await supabase.from('modules').select('id, titulo, product_id').eq('id', data.module_id).maybeSingle();
       if (mod) {
         setModuleName(mod.titulo);
-        const { data: prod } = await supabase.from('products').select('slug').eq('id', mod.product_id).maybeSingle();
-        if (prod) setProductSlug(prod.slug);
+        const { data: prod } = await supabase.from('products').select('slug, nome').eq('id', mod.product_id).maybeSingle();
+        if (prod) { setProductSlug(prod.slug); setProductName(prod.nome); }
+
+        // Check access
+        if (isAdmin || data.is_preview) {
+          setHasAccess(true);
+        } else if (user) {
+          const { data: assoc } = await supabase
+            .from('associacoes').select('id').eq('user_id', user.id).eq('product_id', mod.product_id).eq('status', 'ativo').limit(1);
+          setHasAccess((assoc?.length ?? 0) > 0);
+        }
+        setAccessChecked(true);
       }
 
       if (user) {
@@ -77,10 +88,7 @@ export default function LessonPage() {
       if (allLessons) {
         setModuleLessons(allLessons);
         const idx = allLessons.findIndex(l => l.id === data.id);
-        setSiblings({
-          prev: idx > 0 ? allLessons[idx - 1].id : null,
-          next: idx < allLessons.length - 1 ? allLessons[idx + 1].id : null,
-        });
+        setSiblings({ prev: idx > 0 ? allLessons[idx - 1].id : null, next: idx < allLessons.length - 1 ? allLessons[idx + 1].id : null });
       }
     } catch (err) { console.error(err); }
   };
@@ -94,44 +102,30 @@ export default function LessonPage() {
         { onConflict: 'user_id,lesson_id' }
       );
       if (error) { toast.error('Erro ao salvar progresso: ' + error.message); return; }
-      setCompleted(true);
-      setShowCheckAnim(true);
+      setCompleted(true); setShowCheckAnim(true);
       setTimeout(() => setShowCheckAnim(false), 2000);
       toast.success('Aula concluída! 🎉');
 
       const allLessonIds = moduleLessons.map(l => l.id);
       const { data: progress } = await supabase.from('rastreamento_progresso')
-        .select('lesson_id').eq('user_id', user.id).eq('concluido', true)
-        .in('lesson_id', allLessonIds);
-      const completedCount = (progress?.length || 0);
-      
-      if (completedCount >= allLessonIds.length) {
+        .select('lesson_id').eq('user_id', user.id).eq('concluido', true).in('lesson_id', allLessonIds);
+
+      if ((progress?.length || 0) >= allLessonIds.length) {
         const { data: mod } = await supabase.from('modules').select('product_id').eq('id', lesson.module_id).maybeSingle();
         if (mod) {
           const { data: allMods } = await supabase.from('modules').select('id').eq('product_id', mod.product_id);
-          const allModIds = allMods?.map(m => m.id) || [];
-          const { data: allProgramLessons } = await supabase.from('lessons').select('id').in('module_id', allModIds);
-          const allProgramLessonIds = allProgramLessons?.map(l => l.id) || [];
+          const { data: allProgramLessons } = await supabase.from('lessons').select('id').in('module_id', (allMods ?? []).map(m => m.id));
           const { data: allProg } = await supabase.from('rastreamento_progresso')
-            .select('lesson_id').eq('user_id', user.id).eq('concluido', true).in('lesson_id', allProgramLessonIds);
-          
-          if ((allProg?.length || 0) >= allProgramLessonIds.length) {
+            .select('lesson_id').eq('user_id', user.id).eq('concluido', true).in('lesson_id', (allProgramLessons ?? []).map(l => l.id));
+          if ((allProg?.length || 0) >= (allProgramLessons?.length || 0)) {
             setShowProgramComplete(true);
           } else {
             setShowModuleComplete(true);
           }
         }
       } else if (siblings.next) {
-        let c = 5;
-        setCountdown(c);
-        const timer = window.setInterval(() => {
-          c--;
-          setCountdown(c);
-          if (c <= 0) {
-            clearInterval(timer);
-            navigate(`/app/aula/${siblings.next}`);
-          }
-        }, 1000);
+        let c = 5; setCountdown(c);
+        const timer = window.setInterval(() => { c--; setCountdown(c); if (c <= 0) { clearInterval(timer); navigate(`/app/aula/${siblings.next}`); } }, 1000);
         setAutoAdvanceTimer(timer);
       }
     } finally { setMarking(false); }
@@ -144,15 +138,34 @@ export default function LessonPage() {
     if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
     return url;
   };
-
   const isDirectVideo = (url: string) => /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
 
   if (!lesson) {
+    return <AppLayout><div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div></AppLayout>;
+  }
+
+  // Blocked screen
+  if (accessChecked && !hasAccess) {
     return (
       <AppLayout>
-        <div className="flex h-[60vh] items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
+        <AnimatedPage>
+          <div className="flex h-[70vh] items-center justify-center px-4">
+            <motion.div className="text-center space-y-6 max-w-md" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-muted">
+                <Lock className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h1 className="font-display text-3xl font-semibold text-foreground">{lesson.titulo}</h1>
+              <p className="text-muted-foreground">Você não tem acesso a esta aula. Solicite acesso ao programa para desbloquear todo o conteúdo.</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={() => setShowRequestModal(true)} className="active:scale-[0.97] transition-transform">Solicitar acesso</Button>
+                <Button asChild variant="outline" className="active:scale-[0.97] transition-transform">
+                  <Link to={productSlug ? `/app/programa/${productSlug}` : '/app'}>Voltar ao programa</Link>
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+          <AccessRequestModal open={showRequestModal} onClose={() => setShowRequestModal(false)} programName={productName} />
+        </AnimatedPage>
       </AppLayout>
     );
   }
@@ -168,22 +181,13 @@ export default function LessonPage() {
         ]} />
 
         <div className="flex flex-col lg:flex-row">
-          <motion.div
-            className="flex-1 max-w-4xl mx-auto px-4 py-8 lg:px-8"
-            variants={staggerContainer}
-            initial="initial"
-            animate="animate"
-          >
+          <motion.div className="flex-1 max-w-4xl mx-auto px-4 py-8 lg:px-8" variants={staggerContainer} initial="initial" animate="animate">
             {lesson.video_url && (
-              <motion.div
-                variants={fadeInUp}
-                className="aspect-video w-full overflow-hidden rounded-2xl bg-card mb-8 shadow-soft border border-border"
-              >
+              <motion.div variants={fadeInUp} className="aspect-video w-full overflow-hidden rounded-2xl bg-card mb-8 shadow-soft border border-border">
                 {isDirectVideo(lesson.video_url) ? (
                   <video src={lesson.video_url} controls className="h-full w-full" />
                 ) : (
-                  <iframe src={getEmbedUrl(lesson.video_url)} className="h-full w-full" allowFullScreen
-                    allow="autoplay; fullscreen; picture-in-picture" />
+                  <iframe src={getEmbedUrl(lesson.video_url)} className="h-full w-full" allowFullScreen allow="autoplay; fullscreen; picture-in-picture" />
                 )}
               </motion.div>
             )}
@@ -194,34 +198,20 @@ export default function LessonPage() {
                 <p className="mt-2 text-muted-foreground">{lesson.descricao}</p>
               </div>
               <div className="flex flex-col items-end gap-2 relative">
-                <Button
-                  onClick={markComplete} disabled={completed || marking}
-                  variant={completed ? 'outline' : 'default'}
+                <Button onClick={markComplete} disabled={completed || marking} variant={completed ? 'outline' : 'default'}
                   className={`flex-shrink-0 active:scale-[0.97] transition-transform ${completed ? 'border-primary text-primary' : ''}`}
                 >
-                  {marking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</>
-                    : <><CheckCircle className="mr-2 h-4 w-4" /> {completed ? 'Concluída ✓' : 'Marcar como concluída'}</>}
+                  {marking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><CheckCircle className="mr-2 h-4 w-4" /> {completed ? 'Concluída ✓' : 'Marcar como concluída'}</>}
                 </Button>
-                {/* Check animation */}
                 <AnimatePresence>
                   {showCheckAnim && (
-                    <motion.div
-                      className="absolute -top-8 right-0"
-                      initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                      animate={{ opacity: 1, scale: 1.2, y: -20 }}
-                      exit={{ opacity: 0, scale: 0, y: -40 }}
-                      transition={{ duration: 0.6 }}
-                    >
+                    <motion.div className="absolute -top-8 right-0" initial={{ opacity: 0, scale: 0.5, y: 10 }} animate={{ opacity: 1, scale: 1.2, y: -20 }} exit={{ opacity: 0, scale: 0, y: -40 }} transition={{ duration: 0.6 }}>
                       <CheckCircle className="h-8 w-8 text-primary" />
                     </motion.div>
                   )}
                 </AnimatePresence>
                 {autoAdvanceTimer && countdown > 0 && siblings.next && (
-                  <motion.span
-                    className="text-xs text-muted-foreground"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
+                  <motion.span className="text-xs text-muted-foreground" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     Próxima aula em {countdown}s...{' '}
                     <button onClick={() => { if (autoAdvanceTimer) clearInterval(autoAdvanceTimer); setAutoAdvanceTimer(null); }} className="text-primary underline">cancelar</button>
                   </motion.span>
@@ -236,16 +226,8 @@ export default function LessonPage() {
             )}
 
             <motion.div variants={fadeInUp} className="flex items-center justify-between border-t border-border pt-6">
-              {siblings.prev ? (
-                <Button asChild variant="outline" className="active:scale-[0.97] transition-transform">
-                  <Link to={`/app/aula/${siblings.prev}`}><ChevronLeft className="mr-2 h-4 w-4" /> Aula anterior</Link>
-                </Button>
-              ) : <div />}
-              {siblings.next ? (
-                <Button asChild className="active:scale-[0.97] transition-transform">
-                  <Link to={`/app/aula/${siblings.next}`}>Próxima aula <ChevronRight className="ml-2 h-4 w-4" /></Link>
-                </Button>
-              ) : <div />}
+              {siblings.prev ? <Button asChild variant="outline" className="active:scale-[0.97]"><Link to={`/app/aula/${siblings.prev}`}><ChevronLeft className="mr-2 h-4 w-4" /> Aula anterior</Link></Button> : <div />}
+              {siblings.next ? <Button asChild className="active:scale-[0.97]"><Link to={`/app/aula/${siblings.next}`}>Próxima aula <ChevronRight className="ml-2 h-4 w-4" /></Link></Button> : <div />}
             </motion.div>
           </motion.div>
 
@@ -253,17 +235,9 @@ export default function LessonPage() {
             <h3 className="font-display text-lg font-semibold text-foreground mb-4">Aulas do módulo</h3>
             <div className="space-y-1">
               {moduleLessons.map((l, i) => (
-                <motion.div
-                  key={l.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                >
-                  <Link
-                    to={`/app/aula/${l.id}`}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
-                      l.id === lesson.id ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-secondary hover:text-foreground hover:translate-x-1'
-                    }`}
+                <motion.div key={l.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
+                  <Link to={`/app/aula/${l.id}`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${l.id === lesson.id ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                   >
                     <Play className="h-3.5 w-3.5 flex-shrink-0" />
                     <span className="truncate">{l.titulo}</span>
@@ -274,38 +248,26 @@ export default function LessonPage() {
           </aside>
         </div>
 
-        {/* Module complete modal */}
         <Dialog open={showModuleComplete} onOpenChange={setShowModuleComplete}>
           <DialogContent className="bg-card border-border text-center">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 15 }}>
               <DialogHeader>
-                <DialogTitle className="font-display text-3xl flex items-center justify-center gap-2">
-                  <PartyPopper className="h-8 w-8 text-primary" /> Módulo concluído!
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground text-base mt-2">
-                  Parabéns! Você completou todas as aulas deste módulo. Continue assim! 🎉
-                </DialogDescription>
+                <DialogTitle className="font-display text-3xl flex items-center justify-center gap-2"><PartyPopper className="h-8 w-8 text-primary" /> Módulo concluído!</DialogTitle>
+                <DialogDescription className="text-muted-foreground text-base mt-2">Parabéns! Você completou todas as aulas deste módulo. 🎉</DialogDescription>
               </DialogHeader>
-              <Button onClick={() => setShowModuleComplete(false)} className="mt-4 active:scale-[0.97] transition-transform">Continuar</Button>
+              <Button onClick={() => setShowModuleComplete(false)} className="mt-4 active:scale-[0.97]">Continuar</Button>
             </motion.div>
           </DialogContent>
         </Dialog>
 
-        {/* Program complete modal */}
         <Dialog open={showProgramComplete} onOpenChange={setShowProgramComplete}>
           <DialogContent className="bg-card border-border text-center">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 15 }}>
               <DialogHeader>
-                <DialogTitle className="font-display text-3xl flex items-center justify-center gap-2">
-                  <Trophy className="h-8 w-8 text-primary" /> Programa concluído!
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground text-base mt-2">
-                  Incrível! Você completou todas as aulas do programa! Parabéns pela dedicação! 🏆
-                </DialogDescription>
+                <DialogTitle className="font-display text-3xl flex items-center justify-center gap-2"><Trophy className="h-8 w-8 text-primary" /> Programa concluído!</DialogTitle>
+                <DialogDescription className="text-muted-foreground text-base mt-2">Incrível! Você completou todas as aulas do programa! 🏆</DialogDescription>
               </DialogHeader>
-              <Button asChild className="mt-4 active:scale-[0.97] transition-transform">
-                <Link to="/app">Voltar ao início</Link>
-              </Button>
+              <Button asChild className="mt-4 active:scale-[0.97]"><Link to="/app">Voltar ao início</Link></Button>
             </motion.div>
           </DialogContent>
         </Dialog>
