@@ -49,7 +49,7 @@ export default function AdminModules() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
   const [form, setForm] = useState({
-    titulo: '', descricao: '', ordem: 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT,
+    titulo: '', descricao: '', ordem: 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT, imagem_url: '',
   });
 
   useEffect(() => {
