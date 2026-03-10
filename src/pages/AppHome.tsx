@@ -33,13 +33,9 @@ export default function AppHome() {
   const loadData = async () => {
     if (!user) return;
     try {
-      const { data: associations } = await supabase
-        .from('associacoes').select('product_id').eq('user_id', user.id).eq('status', 'ativo');
-      if (!associations?.length) return;
-
-      const productIds = associations.map(a => a.product_id);
+      // Show all active products to everyone (access is controlled via admin associations)
       const { data: products } = await supabase
-        .from('products').select('*').in('id', productIds).eq('is_active', true).limit(1);
+        .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
 
       if (products?.length) {
         setFeaturedProduct(products[0]);
