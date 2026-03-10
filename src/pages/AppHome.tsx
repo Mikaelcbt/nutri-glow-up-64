@@ -44,9 +44,18 @@ export default function AppHome() {
     if (!user) return;
     setLoading(true);
     try {
-      // All active products
-      const { data: products } = await supabase
+      // All active products — visible to all authenticated users
+      const { data: products, error: prodErr } = await supabase
         .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
+
+      console.log('[AppHome] products query:', { products, error: prodErr, userId: user.id });
+
+      if (prodErr) {
+        console.error('[AppHome] Erro ao buscar produtos:', prodErr);
+        setAllProducts([]);
+        setLoading(false);
+        return;
+      }
 
       if (!products?.length) { setAllProducts([]); setLoading(false); return; }
       setAllProducts(products);
