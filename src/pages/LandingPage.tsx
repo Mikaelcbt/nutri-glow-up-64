@@ -38,36 +38,40 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* Hero */}
-      <section className="pt-28 pb-24 px-6 relative overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 right-0 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-accent/30 blur-3xl" />
+      <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0">
+          <img
+            src="/images/hero-bg.jpg"
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-foreground/85 via-foreground/70 to-foreground/30" />
         </div>
 
-        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
+        <div className="relative z-10 max-w-6xl mx-auto w-full px-6 py-24 flex flex-col lg:flex-row items-center gap-12">
           <motion.div
-            className="flex-1 space-y-8"
+            className="flex-1 space-y-7"
             variants={staggerContainer}
             initial="initial"
             animate="animate"
           >
-            <motion.span variants={fadeInUp} className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent-foreground">
+            <motion.span variants={fadeInUp} className="inline-flex items-center gap-2 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground">
               <Sparkles className="h-3.5 w-3.5" />
               Plataforma de nutrição
             </motion.span>
-            <motion.h1 variants={fadeInUp} className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] text-foreground">
+            <motion.h1 variants={fadeInUp} className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] text-primary-foreground">
               Transforme seu{' '}
-              <span className="text-primary relative">
+              <span className="text-primary relative inline-block">
                 corpo
-                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 12" fill="none">
-                  <path d="M2 8C40 2 100 2 198 8" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round" opacity="0.4"/>
+                <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 12" fill="none">
+                  <path d="M2 8C40 2 100 2 198 8" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
                 </svg>
               </span>{' '}
               e sua{' '}
               <span className="text-primary">saúde</span>
             </motion.h1>
-            <motion.p variants={fadeInUp} className="text-lg text-muted-foreground max-w-lg leading-relaxed">
+            <motion.p variants={fadeInUp} className="text-lg text-primary-foreground/75 max-w-lg leading-relaxed">
               Programas completos de nutrição com acompanhamento especializado, planos alimentares personalizados e uma comunidade de apoio.
             </motion.p>
 
@@ -75,7 +79,7 @@ export default function LandingPage() {
               <Button asChild size="lg" className="h-13 px-8 text-base font-semibold active:scale-[0.97] transition-all shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30">
                 <Link to="/register"><ArrowRight className="mr-2 h-5 w-5" /> Começar agora</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="h-13 px-8 text-base font-semibold border-border text-foreground hover:bg-secondary active:scale-[0.97] transition-all">
+              <Button asChild variant="outline" size="lg" className="h-13 px-8 text-base font-semibold border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 active:scale-[0.97] transition-all backdrop-blur-sm">
                 <Link to="/login">Já tenho conta</Link>
               </Button>
             </motion.div>
@@ -83,9 +87,9 @@ export default function LandingPage() {
             {/* Social proof */}
             <motion.div variants={fadeInUp} className="flex items-center gap-4 pt-4">
               <div className="flex -space-x-2">
-                {['🟢', '🟡', '🔵'].map((_, i) => (
-                  <div key={i} className="h-9 w-9 rounded-full bg-accent border-2 border-card flex items-center justify-center text-xs font-bold text-accent-foreground">
-                    {['M', 'A', 'C'][i]}
+                {['M', 'A', 'C'].map((letter, i) => (
+                  <div key={i} className="h-9 w-9 rounded-full bg-primary/30 backdrop-blur-sm border-2 border-primary-foreground/20 flex items-center justify-center text-xs font-bold text-primary-foreground">
+                    {letter}
                   </div>
                 ))}
               </div>
@@ -95,26 +99,24 @@ export default function LandingPage() {
                     <Star key={i} className="h-3.5 w-3.5 fill-primary text-primary" />
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">+200 alunos transformados</p>
+                <p className="text-xs text-primary-foreground/60">+200 alunos transformados</p>
               </div>
             </motion.div>
           </motion.div>
 
+          {/* Logo card floating on right */}
           <motion.div
-            className="flex-1 max-w-lg w-full"
+            className="hidden lg:block flex-shrink-0"
             variants={fadeInRight}
             initial="initial"
             animate="animate"
           >
             <div className="relative">
-              <div className="rounded-3xl bg-gradient-to-br from-primary/10 via-accent to-primary/5 p-1">
-                <div className="rounded-[22px] bg-card p-8 shadow-soft">
-                  <img src="/icon-512.png" alt="JP NutriCare" className="w-full rounded-2xl" />
-                </div>
+              <div className="w-56 h-56 rounded-3xl bg-primary-foreground/10 backdrop-blur-md border border-primary-foreground/20 p-6 shadow-2xl flex items-center justify-center">
+                <img src="/icon-512.png" alt="JP NutriCare" className="w-full rounded-2xl" />
               </div>
-              {/* Floating stat cards */}
               <motion.div
-                className="absolute -bottom-4 -left-4 rounded-2xl bg-card border border-border p-3 shadow-soft"
+                className="absolute -bottom-5 -left-5 rounded-2xl bg-card/95 backdrop-blur-sm border border-border p-3 shadow-soft"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.8, duration: 0.4 }}
@@ -130,7 +132,7 @@ export default function LandingPage() {
                 </div>
               </motion.div>
               <motion.div
-                className="absolute -top-4 -right-4 rounded-2xl bg-card border border-border p-3 shadow-soft"
+                className="absolute -top-5 -right-5 rounded-2xl bg-card/95 backdrop-blur-sm border border-border p-3 shadow-soft"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1, duration: 0.4 }}
@@ -152,19 +154,20 @@ export default function LandingPage() {
 
       {/* Programs */}
       {products.length > 0 && (
-        <section className="py-20 px-6 bg-secondary/50">
+        <section className="py-24 px-6 bg-secondary/50">
           <div className="max-w-6xl mx-auto">
             <motion.div
-              className="text-center mb-12"
+              className="text-center mb-16"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <h2 className="font-display text-4xl font-semibold text-foreground">O que você vai aprender</h2>
-              <p className="text-muted-foreground mt-3">Programas completos desenvolvidos por especialistas</p>
+              <span className="inline-block rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent-foreground mb-4">Nossos programas</span>
+              <h2 className="font-display text-4xl lg:text-5xl font-bold text-foreground">O que você vai aprender</h2>
+              <p className="text-muted-foreground mt-4 text-lg max-w-xl mx-auto">Programas completos desenvolvidos por especialistas em nutrição</p>
             </motion.div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((p, i) => (
                 <motion.div
                   key={p.id}
@@ -172,16 +175,23 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.4 }}
-                  className="rounded-2xl border border-border bg-card overflow-hidden shadow-card hover:shadow-soft transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02]"
+                  className="group rounded-2xl border border-border bg-card overflow-hidden shadow-card hover:shadow-soft transition-all duration-300 hover:-translate-y-2"
                 >
-                  {p.imagem_capa_url && (
-                    <img src={p.imagem_capa_url} alt={p.nome} className="h-48 w-full object-cover" />
-                  )}
-                  <div className="p-6">
-                    <h3 className="font-display text-xl font-semibold text-foreground">{p.nome}</h3>
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{p.descricao}</p>
-                    <Link to="/register" className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-primary hover:underline">
-                      Começar <ChevronRight className="h-4 w-4" />
+                  <div className="relative overflow-hidden">
+                    {p.imagem_capa_url ? (
+                      <img src={p.imagem_capa_url} alt={p.nome} className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="h-56 w-full bg-accent flex items-center justify-center">
+                        <BookOpen className="h-12 w-12 text-accent-foreground/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-foreground/20 to-transparent" />
+                  </div>
+                  <div className="p-6 space-y-3">
+                    <h3 className="font-display text-2xl font-semibold text-foreground">{p.nome}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{p.descricao}</p>
+                    <Link to="/register" className="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
+                      Começar programa <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
                 </motion.div>
