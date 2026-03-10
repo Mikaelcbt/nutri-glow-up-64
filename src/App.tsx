@@ -27,6 +27,10 @@ import AdminLessons from "./pages/admin/AdminLessons";
 import AdminAssociations from "./pages/admin/AdminAssociations";
 import AdminTransformations from "./pages/admin/AdminTransformations";
 import AdminMaterials from "./pages/admin/AdminMaterials";
+import AdminChallenges from "./pages/admin/AdminChallenges";
+import ChallengesPage from "./pages/ChallengesPage";
+import ChallengeDetailPage from "./pages/ChallengeDetailPage";
+import ChallengeDayPage from "./pages/ChallengeDayPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
