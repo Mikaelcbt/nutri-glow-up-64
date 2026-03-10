@@ -247,7 +247,7 @@ export default function AdminAssociations() {
               className="w-full text-left rounded-lg border border-border bg-card p-3 hover:border-primary/50 transition-colors"
             >
               <span className="font-semibold">{user.nome_completo}</span>
-              <span className="block text-xs text-muted-foreground mt-1">{user.email || `ID: ${user.id}`}</span>
+              <span className="block text-xs text-muted-foreground mt-1">ID: {user.id.slice(0, 8)}</span>
             </button>
           ))}
         </div>
