@@ -325,12 +325,21 @@ export default function AppHome() {
                 const color = mod.cor_destaque || moduleColors[i % moduleColors.length];
                 return (
                   <motion.div key={mod.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}>
-                    <Link to={`/app/programa/${featuredProduct?.slug}#modulo-${mod.id}`}
+                    <Link to={`/app/modulo/${mod.id}`}
                       className="group relative flex-shrink-0 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-2 hover:shadow-soft block"
                       style={{ width: 200, height: 320 }}
                     >
-                      <div className="absolute inset-0 bg-card" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-foreground/5 to-transparent" />
+                      {/* Module image or fallback */}
+                      {(mod.imagem_url || featuredProduct?.imagem_capa_url) ? (
+                        <img
+                          src={mod.imagem_url || featuredProduct?.imagem_capa_url}
+                          alt={mod.titulo}
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-card" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
                       <div className="absolute top-4 left-0 right-0 text-center">
                         <span className="inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-card" style={{ backgroundColor: color }}>
                           Módulo {i + 1}
