@@ -20,7 +20,6 @@ interface Association {
 interface FoundUser {
   id: string;
   nome_completo: string;
-  email?: string | null;
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
