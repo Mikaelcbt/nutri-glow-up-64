@@ -51,11 +51,24 @@ export default function AppHome() {
     setLoading(true);
     try {
       // Fetch all active products with nested modules and lessons
-      const { data: products, error: prodErr } = await supabase
+      // Try nested query first, fall back to simple query
+      let products: any[] | null = null;
+      let prodErr: any = null;
+
+      const res1 = await supabase
         .from('products')
         .select('*, modules(*, lessons(id))')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+
+      if (res1.error) {
+        console.warn('[AppHome] Nested query failed, trying simple query:', res1.error);
+        const res2 = await supabase.from('products').select('*').eq('is_active', true);
+        products = res2.data;
+        prodErr = res2.error;
+      } else {
+        products = res1.data;
+        prodErr = res1.error;
+      }
 
       console.log('[AppHome] products query:', { count: products?.length, error: prodErr });
 
@@ -94,9 +107,14 @@ export default function AppHome() {
       setFeaturedProduct(featured);
       setFeaturedHasAccess(hasAccess);
 
-      // Use nested modules from the query
-      const featuredModules = featured.modules || [];
-      const sortedMods = [...featuredModules].sort((a: any, b: any) => a.ordem - b.ordem);
+      // Modules for featured product — use nested data or fetch separately
+      let featuredModules: any[] = featured.modules || [];
+      if (featuredModules.length === 0) {
+        const { data: mods } = await supabase
+          .from('modules').select('*, lessons(id)').eq('product_id', featured.id).order('ordem');
+        featuredModules = mods || [];
+      }
+      const sortedMods = [...featuredModules].sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0));
       setModules(sortedMods.map((m: any) => ({ ...m, product_id: featured.id })));
 
       const totalLessons = featuredModules.reduce((sum: number, m: any) => sum + (m.lessons?.length || 0), 0);
@@ -105,11 +123,13 @@ export default function AppHome() {
       // Progress
       if (hasAccess && totalLessons > 0) {
         const allLessonIds = featuredModules.flatMap((m: any) => (m.lessons || []).map((l: any) => l.id));
-        const { data: progress } = await supabase
-          .from('rastreamento_progresso').select('lesson_id')
-          .eq('user_id', user.id).eq('concluido', true).in('lesson_id', allLessonIds);
-        const done = progress?.length || 0;
-        setProductProgress((done / totalLessons) * 100);
+        if (allLessonIds.length > 0) {
+          const { data: progress } = await supabase
+            .from('rastreamento_progresso').select('lesson_id')
+            .eq('user_id', user.id).eq('concluido', true).in('lesson_id', allLessonIds);
+          const done = progress?.length || 0;
+          setProductProgress((done / totalLessons) * 100);
+        }
       } else {
         setProductProgress(0);
       }
