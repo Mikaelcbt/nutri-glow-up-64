@@ -20,8 +20,16 @@ interface Association {
 interface FoundUser {
   id: string;
   nome_completo: string;
-  email: string;
+  email?: string | null;
 }
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 export default function AdminAssociations() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,127 +38,218 @@ export default function AdminAssociations() {
   const [selectedUser, setSelectedUser] = useState<FoundUser | null>(null);
   const [associations, setAssociations] = useState<Association[]>([]);
   const [selectedProduct, setSelectedProduct] = useState('');
+  const [pageError, setPageError] = useState('');
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [searching, setSearching] = useState(false);
   const [granting, setGranting] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('products').select('id, nome').order('nome').then(({ data, error }) => {
-      if (error) toast.error('Erro: ' + error.message);
-      if (data) setProducts(data);
-    });
+    void loadProducts();
   }, []);
 
-  const searchUser = async () => {
-    if (!searchTerm.trim()) { toast.error('Digite um nome ou e-mail para buscar'); return; }
-    setSearching(true);
-    
+  const loadProducts = async () => {
+    setLoadingProducts(true);
+    setPageError('');
+
     try {
-      // Search profiles by nome_completo
+      const { data, error } = await supabase.from('products').select('id, nome').order('nome');
+      if (error) throw error;
+      setProducts(data ?? []);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao carregar produtos.');
+      console.error('Erro ao carregar produtos:', error);
+      setPageError(message);
+      setProducts([]);
+      toast.error(message);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const searchUser = async () => {
+    if (!searchTerm.trim()) {
+      const message = 'Digite um nome ou e-mail para buscar.';
+      setPageError(message);
+      toast.error(message);
+      return;
+    }
+
+    setSearching(true);
+    setPageError('');
+
+    try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, nome_completo')
-        .ilike('nome_completo', `%${searchTerm}%`)
+        .select('id, nome_completo, email')
+        .or(`nome_completo.ilike.%${searchTerm.trim()}%,email.ilike.%${searchTerm.trim()}%`)
         .limit(10);
 
-      if (error) { toast.error('Erro na busca: ' + error.message); return; }
+      if (error) throw error;
 
       if (!profiles?.length) {
-        toast.error('Nenhum usuário encontrado');
         setFoundUsers([]);
         setSelectedUser(null);
         setAssociations([]);
+        toast.error('Nenhum usuário encontrado.');
         return;
       }
 
-      // Map profiles with user metadata for email display
-      const users: FoundUser[] = profiles.map(p => ({
-        id: p.id,
-        nome_completo: p.nome_completo || 'Sem nome',
-        email: '', // Will be shown from profile data
+      const users: FoundUser[] = profiles.map((profile) => ({
+        id: profile.id,
+        nome_completo: profile.nome_completo || 'Sem nome',
+        email: 'email' in profile ? profile.email : null,
       }));
 
       setFoundUsers(users);
-      
-      // Auto-select if only one result
+
       if (users.length === 1) {
-        selectUser(users[0]);
+        await selectUser(users[0]);
       } else {
         setSelectedUser(null);
         setAssociations([]);
       }
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao buscar usuário.');
+      console.error('Erro ao buscar usuário:', error);
+      setPageError(message);
+      setFoundUsers([]);
+      setSelectedUser(null);
+      setAssociations([]);
+      toast.error(message);
     } finally {
       setSearching(false);
     }
   };
 
-  const selectUser = (user: FoundUser) => {
+  const selectUser = async (user: FoundUser) => {
     setSelectedUser(user);
-    loadUserAssociations(user.id);
+    await loadUserAssociations(user.id);
   };
 
   const loadUserAssociations = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('associacoes')
-      .select('*')
-      .eq('user_id', userId);
-    if (error) toast.error('Erro: ' + error.message);
-    if (data) setAssociations(data);
+    setPageError('');
+
+    try {
+      const { data, error } = await supabase
+        .from('associacoes')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      setAssociations(data ?? []);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao carregar associações do usuário.');
+      console.error('Erro ao carregar associações:', error);
+      setPageError(message);
+      setAssociations([]);
+      toast.error(message);
+    }
   };
 
   const grantAccess = async () => {
-    if (!selectedUser || !selectedProduct) return;
-    setGranting(true);
-    try {
-      const { error } = await supabase.from('associacoes').upsert({
-        user_id: selectedUser.id,
-        product_id: selectedProduct,
-        status: 'ativo',
-        data_inicio: new Date().toISOString(),
-      }, { onConflict: 'user_id,product_id' });
+    if (!selectedUser || !selectedProduct) {
+      const message = 'Selecione um usuário e um produto antes de conceder acesso.';
+      setPageError(message);
+      toast.error(message);
+      return;
+    }
 
-      if (error) { toast.error('Erro: ' + error.message); return; }
-      toast.success('Acesso concedido!');
-      loadUserAssociations(selectedUser.id);
-    } finally { setGranting(false); }
+    setGranting(true);
+    setPageError('');
+
+    try {
+      const { data, error } = await supabase
+        .from('associacoes')
+        .upsert({
+          user_id: selectedUser.id,
+          product_id: selectedProduct,
+          status: 'ativo',
+          data_inicio: new Date().toISOString(),
+          data_fim: null,
+        }, { onConflict: 'user_id,product_id' })
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error('Não foi possível conceder acesso. Verifique a permissão de admin no RLS.');
+
+      toast.success('Acesso concedido com sucesso!');
+      await loadUserAssociations(selectedUser.id);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao conceder acesso.');
+      console.error('Erro ao conceder acesso:', error);
+      setPageError(message);
+      toast.error(message);
+    } finally {
+      setGranting(false);
+    }
   };
 
   const revokeAccess = async (assocId: string) => {
-    const { error } = await supabase.from('associacoes').update({ status: 'inativo' }).eq('id', assocId);
-    if (error) { toast.error('Erro: ' + error.message); return; }
-    toast.success('Acesso revogado');
-    if (selectedUser) loadUserAssociations(selectedUser.id);
+    if (!selectedUser) return;
+
+    setRevokingId(assocId);
+    setPageError('');
+
+    try {
+      const { data, error } = await supabase
+        .from('associacoes')
+        .update({ status: 'inativo', data_fim: new Date().toISOString() })
+        .eq('id', assocId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error('Não foi possível revogar o acesso. Verifique a permissão de admin no RLS.');
+
+      toast.success('Acesso revogado com sucesso!');
+      await loadUserAssociations(selectedUser.id);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao revogar acesso.');
+      console.error('Erro ao revogar acesso:', error);
+      setPageError(message);
+      toast.error(message);
+    } finally {
+      setRevokingId(null);
+    }
   };
 
   return (
     <AdminLayout>
       <h1 className="font-display text-3xl tracking-wide mb-8">ASSOCIAÇÕES</h1>
 
+      {pageError && (
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {pageError}
+        </div>
+      )}
+
       <div className="flex gap-3 mb-6">
         <Input
-          placeholder="Buscar por nome do usuário..."
+          placeholder="Buscar por nome ou e-mail..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && searchUser()}
+          onKeyDown={(e) => e.key === 'Enter' && void searchUser()}
           className="max-w-sm bg-secondary border-border"
         />
-        <Button onClick={searchUser} disabled={searching}>
+        <Button onClick={() => void searchUser()} disabled={searching}>
           {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
           Buscar
         </Button>
       </div>
 
-      {/* Search results */}
       {foundUsers.length > 1 && !selectedUser && (
         <div className="mb-6 space-y-2">
           <p className="text-sm text-muted-foreground">Selecione um usuário:</p>
-          {foundUsers.map(u => (
+          {foundUsers.map((user) => (
             <button
-              key={u.id}
-              onClick={() => selectUser(u)}
+              key={user.id}
+              onClick={() => void selectUser(user)}
               className="w-full text-left rounded-lg border border-border bg-card p-3 hover:border-primary/50 transition-colors"
             >
-              <span className="font-semibold">{u.nome_completo}</span>
-              <span className="text-xs text-muted-foreground ml-2">ID: {u.id.slice(0, 8)}...</span>
+              <span className="font-semibold">{user.nome_completo}</span>
+              <span className="block text-xs text-muted-foreground mt-1">{user.email || `ID: ${user.id}`}</span>
             </button>
           ))}
         </div>
@@ -160,17 +259,16 @@ export default function AdminAssociations() {
         <div className="space-y-6">
           <div className="rounded-lg border border-border bg-card p-4">
             <h3 className="font-semibold">{selectedUser.nome_completo}</h3>
-            <p className="text-xs text-muted-foreground">ID: {selectedUser.id}</p>
+            <p className="text-xs text-muted-foreground">{selectedUser.email || `ID: ${selectedUser.id}`}</p>
           </div>
 
-          {/* Grant access */}
           <div className="flex gap-3 items-end">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Conceder acesso a:</label>
               <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                <SelectTrigger className="w-64 bg-secondary border-border"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+                <SelectTrigger className="w-64 bg-secondary border-border" disabled={loadingProducts}><SelectValue placeholder={loadingProducts ? 'Carregando produtos...' : 'Selecione um produto'} /></SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {products.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                  {products.map((product) => <SelectItem key={product.id} value={product.id}>{product.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -180,23 +278,24 @@ export default function AdminAssociations() {
             </Button>
           </div>
 
-          {/* Current associations */}
           <div>
             <h4 className="font-display text-xl mb-3">ACESSOS ATUAIS</h4>
             <div className="space-y-2">
-              {associations.map(a => {
-                const productName = products.find(p => p.id === a.product_id)?.nome || a.product_id;
+              {associations.map((association) => {
+                const productName = products.find((product) => product.id === association.product_id)?.nome || association.product_id;
+                const isRevoking = revokingId === association.id;
+
                 return (
-                  <div key={a.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+                  <div key={association.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
                     <div>
                       <span className="font-semibold">{productName}</span>
-                      <span className={`ml-3 text-xs px-2 py-0.5 rounded ${a.status === 'ativo' ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'}`}>
-                        {a.status}
+                      <span className={`ml-3 text-xs px-2 py-0.5 rounded ${association.status === 'ativo' ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'}`}>
+                        {association.status}
                       </span>
                     </div>
-                    {a.status === 'ativo' && (
-                      <Button variant="ghost" size="sm" onClick={() => revokeAccess(a.id)} className="text-destructive hover:text-destructive">
-                        <UserMinus className="h-4 w-4" />
+                    {association.status === 'ativo' && (
+                      <Button variant="ghost" size="sm" onClick={() => void revokeAccess(association.id)} disabled={isRevoking} className="text-destructive hover:text-destructive">
+                        {isRevoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserMinus className="h-4 w-4" />}
                       </Button>
                     )}
                   </div>

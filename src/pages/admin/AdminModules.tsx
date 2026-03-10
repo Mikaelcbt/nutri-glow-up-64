@@ -20,74 +20,200 @@ interface Module {
   cor_destaque: string;
 }
 
-interface Product { id: string; nome: string; }
+interface Product {
+  id: string;
+  nome: string;
+}
+
+const DEFAULT_HIGHLIGHT = '#39d98a';
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 export default function AdminModules() {
   const [modules, setModules] = useState<Module[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<string>('');
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingModules, setLoadingModules] = useState(false);
+  const [pageError, setPageError] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Module | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
   const [form, setForm] = useState({
-    titulo: '', descricao: '', ordem: 1, texto_destaque_palavra: '', cor_destaque: '#39d98a',
+    titulo: '', descricao: '', ordem: 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT,
   });
 
   useEffect(() => {
-    supabase.from('products').select('id, nome').order('nome').then(({ data, error }) => {
-      if (error) toast.error('Erro ao carregar produtos: ' + error.message);
-      if (data) setProducts(data);
-    });
+    void loadProducts();
   }, []);
 
   useEffect(() => {
-    if (selectedProduct) loadModules();
+    if (selectedProduct) {
+      void loadModules(selectedProduct);
+      return;
+    }
+
+    setModules([]);
   }, [selectedProduct]);
 
-  const loadModules = async () => {
-    const { data, error } = await supabase.from('modules').select('*').eq('product_id', selectedProduct).order('ordem');
-    if (error) { toast.error('Erro: ' + error.message); return; }
-    if (data) setModules(data);
+  const loadProducts = async () => {
+    setLoadingProducts(true);
+    setPageError('');
+
+    try {
+      const { data, error } = await supabase.from('products').select('id, nome').order('nome');
+      if (error) throw error;
+      setProducts(data ?? []);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao carregar produtos.');
+      console.error('Erro ao carregar produtos:', error);
+      setPageError(message);
+      setProducts([]);
+      toast.error(message);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const loadModules = async (productId: string) => {
+    setLoadingModules(true);
+    setPageError('');
+
+    try {
+      const { data, error } = await supabase.from('modules').select('*').eq('product_id', productId).order('ordem');
+      if (error) throw error;
+      setModules(data ?? []);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao carregar módulos.');
+      console.error('Erro ao carregar módulos:', error);
+      setPageError(message);
+      setModules([]);
+      toast.error(message);
+    } finally {
+      setLoadingModules(false);
+    }
   };
 
   const openNew = () => {
     setEditing(null);
-    setForm({ titulo: '', descricao: '', ordem: modules.length + 1, texto_destaque_palavra: '', cor_destaque: '#39d98a' });
+    setPageError('');
+    setForm({ titulo: '', descricao: '', ordem: modules.length + 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT });
     setOpen(true);
   };
 
-  const openEdit = (m: Module) => {
-    setEditing(m);
-    setForm({ titulo: m.titulo, descricao: m.descricao, ordem: m.ordem, texto_destaque_palavra: m.texto_destaque_palavra || '', cor_destaque: m.cor_destaque || '#39d98a' });
+  const openEdit = (module: Module) => {
+    setEditing(module);
+    setPageError('');
+    setForm({
+      titulo: module.titulo,
+      descricao: module.descricao,
+      ordem: module.ordem,
+      texto_destaque_palavra: module.texto_destaque_palavra || '',
+      cor_destaque: module.cor_destaque || DEFAULT_HIGHLIGHT,
+    });
     setOpen(true);
   };
 
   const save = async () => {
-    if (!form.titulo.trim()) { toast.error('Título é obrigatório'); return; }
+    if (!selectedProduct) {
+      const message = 'Selecione um produto antes de salvar o módulo.';
+      setPageError(message);
+      toast.error(message);
+      return;
+    }
+
+    if (!form.titulo.trim()) {
+      const message = 'Título é obrigatório.';
+      setPageError(message);
+      toast.error(message);
+      return;
+    }
+
     setSaving(true);
+    setPageError('');
+
     try {
-      const payload = { ...form, product_id: selectedProduct };
+      const payload = {
+        ...form,
+        product_id: selectedProduct,
+        titulo: form.titulo.trim(),
+        descricao: form.descricao.trim(),
+        texto_destaque_palavra: form.texto_destaque_palavra.trim(),
+      };
+
       if (editing) {
-        const { error } = await supabase.from('modules').update(payload).eq('id', editing.id);
-        if (error) { toast.error('Erro: ' + error.message); return; }
-        toast.success('Módulo atualizado!');
+        const { data, error } = await supabase
+          .from('modules')
+          .update(payload)
+          .eq('id', editing.id)
+          .select('id')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error('Nenhum módulo foi atualizado. Verifique a permissão de admin no RLS.');
+
+        toast.success('Módulo atualizado com sucesso!');
       } else {
-        const { error } = await supabase.from('modules').insert(payload);
-        if (error) { toast.error('Erro: ' + error.message); return; }
-        toast.success('Módulo criado!');
+        const { data, error } = await supabase
+          .from('modules')
+          .insert(payload)
+          .select('id')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error('Nenhum módulo foi criado. Verifique a permissão de admin no RLS.');
+
+        toast.success('Módulo criado com sucesso!');
       }
+
       setOpen(false);
-      await loadModules();
-    } finally { setSaving(false); }
+      await loadModules(selectedProduct);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao salvar módulo.');
+      console.error('Erro ao salvar módulo:', error);
+      setPageError(message);
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const confirmDelete = async () => {
-    if (!deleting) return;
-    const { error } = await supabase.from('modules').delete().eq('id', deleting);
-    if (error) toast.error('Erro: ' + error.message);
-    else { toast.success('Módulo removido!'); await loadModules(); }
-    setDeleting(null);
+    if (!deleting || !selectedProduct) return;
+
+    setDeletingBusy(true);
+    setPageError('');
+
+    try {
+      const { data, error } = await supabase
+        .from('modules')
+        .delete()
+        .eq('id', deleting)
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error('Nenhum módulo foi removido. Verifique a permissão de admin no RLS.');
+
+      toast.success('Módulo removido com sucesso!');
+      await loadModules(selectedProduct);
+      setDeleting(null);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao remover módulo.');
+      console.error('Erro ao remover módulo:', error);
+      setPageError(message);
+      toast.error(message);
+    } finally {
+      setDeletingBusy(false);
+    }
   };
 
   return (
@@ -97,33 +223,45 @@ export default function AdminModules() {
         {selectedProduct && <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Novo Módulo</Button>}
       </div>
 
+      {pageError && (
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {pageError}
+        </div>
+      )}
+
       <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-        <SelectTrigger className="w-64 mb-6 bg-secondary border-border">
-          <SelectValue placeholder="Selecione um produto" />
+        <SelectTrigger className="w-64 mb-6 bg-secondary border-border" disabled={loadingProducts}>
+          <SelectValue placeholder={loadingProducts ? 'Carregando produtos...' : 'Selecione um produto'} />
         </SelectTrigger>
         <SelectContent className="bg-popover border-border">
-          {products.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          {products.map((product) => <SelectItem key={product.id} value={product.id}>{product.nome}</SelectItem>)}
         </SelectContent>
       </Select>
 
-      <div className="space-y-3">
-        {modules.map((m) => (
-          <div key={m.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded text-xs font-bold" style={{ backgroundColor: m.cor_destaque, color: '#0e0e0e' }}>{m.ordem}</span>
-              <div>
-                <h3 className="font-semibold">{m.titulo}</h3>
-                <p className="text-xs text-muted-foreground">{m.descricao}</p>
+      {loadingModules ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando módulos...
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {modules.map((module) => (
+            <div key={module.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors">
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">{module.ordem}</span>
+                <div>
+                  <h3 className="font-semibold">{module.titulo}</h3>
+                  <p className="text-xs text-muted-foreground">{module.descricao}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => openEdit(module)}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => setDeleting(module.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => openEdit(m)}><Pencil className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => setDeleting(m.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          </div>
-        ))}
-        {selectedProduct && !modules.length && <p className="text-muted-foreground text-center py-12">Nenhum módulo cadastrado.</p>}
-      </div>
+          ))}
+          {selectedProduct && !modules.length && <p className="text-muted-foreground text-center py-12">Nenhum módulo cadastrado.</p>}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-card border-border">
@@ -132,13 +270,13 @@ export default function AdminModules() {
             <DialogDescription className="text-muted-foreground">Preencha os dados do módulo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Input placeholder="Título" value={form.titulo} onChange={(e) => setForm(f => ({ ...f, titulo: e.target.value }))} className="bg-secondary border-border" />
-            <Textarea placeholder="Descrição" value={form.descricao} onChange={(e) => setForm(f => ({ ...f, descricao: e.target.value }))} className="bg-secondary border-border" />
-            <Input type="number" placeholder="Ordem" value={form.ordem} onChange={(e) => setForm(f => ({ ...f, ordem: parseInt(e.target.value) || 1 }))} className="bg-secondary border-border" />
-            <Input placeholder="Palavra destaque" value={form.texto_destaque_palavra} onChange={(e) => setForm(f => ({ ...f, texto_destaque_palavra: e.target.value }))} className="bg-secondary border-border" />
+            <Input placeholder="Título" value={form.titulo} onChange={(e) => setForm((current) => ({ ...current, titulo: e.target.value }))} className="bg-secondary border-border" />
+            <Textarea placeholder="Descrição" value={form.descricao} onChange={(e) => setForm((current) => ({ ...current, descricao: e.target.value }))} className="bg-secondary border-border" />
+            <Input type="number" placeholder="Ordem" value={form.ordem} onChange={(e) => setForm((current) => ({ ...current, ordem: parseInt(e.target.value, 10) || 1 }))} className="bg-secondary border-border" />
+            <Input placeholder="Palavra destaque" value={form.texto_destaque_palavra} onChange={(e) => setForm((current) => ({ ...current, texto_destaque_palavra: e.target.value }))} className="bg-secondary border-border" />
             <div className="flex items-center gap-2">
               <label className="text-sm text-muted-foreground">Cor destaque:</label>
-              <Input type="color" value={form.cor_destaque} onChange={(e) => setForm(f => ({ ...f, cor_destaque: e.target.value }))} className="w-12 h-10 p-1 bg-secondary border-border" />
+              <Input type="color" value={form.cor_destaque} onChange={(e) => setForm((current) => ({ ...current, cor_destaque: e.target.value }))} className="w-12 h-10 p-1 bg-secondary border-border" />
             </div>
             <Button onClick={save} disabled={saving} className="w-full font-display tracking-wider">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> SALVANDO...</> : 'SALVAR'}
@@ -147,15 +285,17 @@ export default function AdminModules() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog open={!!deleting} onOpenChange={(nextOpen) => !nextOpen && !deletingBusy && setDeleting(null)}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>Tem certeza que deseja excluir este módulo?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogCancel className="border-border" disabled={deletingBusy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deletingBusy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deletingBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</> : 'Excluir'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

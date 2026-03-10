@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, Upload } from 'lucide-react';
+import type { ChangeEvent } from 'react';
 
 interface Product {
   id: string;
@@ -20,102 +21,171 @@ interface Product {
   is_active: boolean;
 }
 
+const DEFAULT_HIGHLIGHT = '#39d98a';
+
 const generateSlug = (name: string) =>
   name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [pageError, setPageError] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
-    nome: '', descricao: '', imagem_capa_url: '', texto_imagem_capa: '', cor_destaque: '#39d98a', is_active: true,
+    nome: '', descricao: '', imagem_capa_url: '', texto_imagem_capa: '', cor_destaque: DEFAULT_HIGHLIGHT, is_active: true,
   });
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   const load = async () => {
-    const { data, error } = await supabase.from('products').select('*').order('criado_em', { ascending: false });
-    if (error) {
+    setLoadingProducts(true);
+    setPageError('');
+
+    try {
+      const orderedByCreated = await supabase.from('products').select('*').order('criado_em', { ascending: false });
+
+      let data = orderedByCreated.data;
+      let error = orderedByCreated.error;
+
+      if (error && /criado_em|column/i.test(error.message)) {
+        const fallback = await supabase.from('products').select('*').order('nome');
+        data = fallback.data;
+        error = fallback.error;
+      }
+
+      if (error) throw error;
+      setProducts(data ?? []);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao carregar produtos.');
       console.error('Erro ao carregar produtos:', error);
-      toast.error('Erro ao carregar produtos: ' + error.message);
-      return;
+      setPageError(message);
+      setProducts([]);
+      toast.error(message);
+    } finally {
+      setLoadingProducts(false);
     }
-    if (data) setProducts(data);
   };
 
   const openNew = () => {
     setEditing(null);
-    setForm({ nome: '', descricao: '', imagem_capa_url: '', texto_imagem_capa: '', cor_destaque: '#39d98a', is_active: true });
+    setPageError('');
+    setForm({ nome: '', descricao: '', imagem_capa_url: '', texto_imagem_capa: '', cor_destaque: DEFAULT_HIGHLIGHT, is_active: true });
     setOpen(true);
   };
 
-  const openEdit = (p: Product) => {
-    setEditing(p);
-    setForm({ nome: p.nome, descricao: p.descricao, imagem_capa_url: p.imagem_capa_url || '', texto_imagem_capa: p.texto_imagem_capa || '', cor_destaque: p.cor_destaque, is_active: p.is_active });
+  const openEdit = (product: Product) => {
+    setEditing(product);
+    setPageError('');
+    setForm({
+      nome: product.nome,
+      descricao: product.descricao,
+      imagem_capa_url: product.imagem_capa_url || '',
+      texto_imagem_capa: product.texto_imagem_capa || '',
+      cor_destaque: product.cor_destaque || DEFAULT_HIGHLIGHT,
+      is_active: product.is_active,
+    });
     setOpen(true);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `capas/${fileName}`;
+    setPageError('');
 
-    const { error: uploadError } = await supabase.storage
-      .from('imagens')
-      .upload(filePath, file);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `capas/${fileName}`;
 
-    if (uploadError) {
-      toast.error('Erro no upload: ' + uploadError.message);
+      const { error: uploadError } = await supabase.storage
+        .from('imagens')
+        .upload(filePath, file, { upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('imagens').getPublicUrl(filePath);
+      setForm((current) => ({ ...current, imagem_capa_url: urlData.publicUrl }));
+      toast.success('Imagem enviada com sucesso!');
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao enviar imagem.');
+      console.error('Erro no upload da imagem:', error);
+      setPageError(message);
+      toast.error(message);
+    } finally {
       setUploading(false);
-      return;
+      event.target.value = '';
     }
-
-    const { data: urlData } = supabase.storage.from('imagens').getPublicUrl(filePath);
-    setForm(f => ({ ...f, imagem_capa_url: urlData.publicUrl }));
-    toast.success('Imagem enviada!');
-    setUploading(false);
   };
 
   const save = async () => {
     if (!form.nome.trim()) {
-      toast.error('Nome é obrigatório');
+      const message = 'Nome é obrigatório.';
+      setPageError(message);
+      toast.error(message);
       return;
     }
 
     setSaving(true);
-    const slug = generateSlug(form.nome);
-    const payload = { ...form, slug };
+    setPageError('');
 
     try {
+      const payload = {
+        ...form,
+        nome: form.nome.trim(),
+        descricao: form.descricao.trim(),
+        texto_imagem_capa: form.texto_imagem_capa.trim(),
+        slug: generateSlug(form.nome),
+      };
+
       if (editing) {
-        const { error } = await supabase.from('products').update(payload).eq('id', editing.id);
-        if (error) {
-          console.error('Erro ao atualizar produto:', error);
-          toast.error('Erro ao atualizar: ' + error.message);
-          return;
-        }
-        toast.success('Produto atualizado!');
+        const { data, error } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', editing.id)
+          .select('id')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error('Nenhum produto foi atualizado. Verifique a permissão de admin no RLS.');
+
+        toast.success('Produto atualizado com sucesso!');
       } else {
-        const { error } = await supabase.from('products').insert(payload);
-        if (error) {
-          console.error('Erro ao criar produto:', error);
-          toast.error('Erro ao criar: ' + error.message);
-          return;
-        }
-        toast.success('Produto criado!');
+        const { data, error } = await supabase
+          .from('products')
+          .insert(payload)
+          .select('id')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error('Nenhum produto foi criado. Verifique a permissão de admin no RLS.');
+
+        toast.success('Produto criado com sucesso!');
       }
+
       setOpen(false);
       await load();
-    } catch (err) {
-      console.error('Erro inesperado:', err);
-      toast.error('Erro inesperado ao salvar');
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro inesperado ao salvar produto.');
+      console.error('Erro ao salvar produto:', error);
+      setPageError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -123,14 +193,32 @@ export default function AdminProducts() {
 
   const confirmDelete = async () => {
     if (!deleting) return;
-    const { error } = await supabase.from('products').delete().eq('id', deleting);
-    if (error) {
-      toast.error('Erro ao remover: ' + error.message);
-    } else {
-      toast.success('Produto removido!');
+
+    setDeletingBusy(true);
+    setPageError('');
+
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', deleting)
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error('Nenhum produto foi removido. Verifique a permissão de admin no RLS.');
+
+      toast.success('Produto removido com sucesso!');
       await load();
+      setDeleting(null);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Erro ao remover produto.');
+      console.error('Erro ao remover produto:', error);
+      setPageError(message);
+      toast.error(message);
+    } finally {
+      setDeletingBusy(false);
     }
-    setDeleting(null);
   };
 
   return (
@@ -140,26 +228,38 @@ export default function AdminProducts() {
         <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Novo Produto</Button>
       </div>
 
-      <div className="space-y-3">
-        {products.map((p) => (
-          <div key={p.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded overflow-hidden bg-secondary flex-shrink-0">
-                {p.imagem_capa_url && <img src={p.imagem_capa_url} alt="" className="h-full w-full object-cover" />}
+      {pageError && (
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {pageError}
+        </div>
+      )}
+
+      {loadingProducts ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando produtos...
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {products.map((product) => (
+            <div key={product.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded overflow-hidden bg-secondary flex-shrink-0">
+                  {product.imagem_capa_url && <img src={product.imagem_capa_url} alt={product.nome} className="h-full w-full object-cover" loading="lazy" />}
+                </div>
+                <div>
+                  <h3 className="font-semibold">{product.nome}</h3>
+                  <p className="text-xs text-muted-foreground">/{product.slug} • {product.is_active ? '✅ Ativo' : '❌ Inativo'}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold">{p.nome}</h3>
-                <p className="text-xs text-muted-foreground">/{p.slug} • {p.is_active ? '✅ Ativo' : '❌ Inativo'}</p>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => openEdit(product)}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => setDeleting(product.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => setDeleting(p.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          </div>
-        ))}
-        {!products.length && <p className="text-muted-foreground text-center py-12">Nenhum produto cadastrado.</p>}
-      </div>
+          ))}
+          {!products.length && <p className="text-muted-foreground text-center py-12">Nenhum produto cadastrado.</p>}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-card border-border">
@@ -170,14 +270,13 @@ export default function AdminProducts() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Input placeholder="Nome" value={form.nome} onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))} className="bg-secondary border-border" />
-            <Textarea placeholder="Descrição" value={form.descricao} onChange={(e) => setForm(f => ({ ...f, descricao: e.target.value }))} className="bg-secondary border-border" />
-            
-            {/* Image upload */}
+            <Input placeholder="Nome" value={form.nome} onChange={(e) => setForm((current) => ({ ...current, nome: e.target.value }))} className="bg-secondary border-border" />
+            <Textarea placeholder="Descrição" value={form.descricao} onChange={(e) => setForm((current) => ({ ...current, descricao: e.target.value }))} className="bg-secondary border-border" />
+
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">Imagem de capa</label>
               <div className="flex gap-2">
-                <Input placeholder="URL da imagem de capa" value={form.imagem_capa_url} onChange={(e) => setForm(f => ({ ...f, imagem_capa_url: e.target.value }))} className="bg-secondary border-border flex-1" />
+                <Input placeholder="URL da imagem de capa" value={form.imagem_capa_url} onChange={(e) => setForm((current) => ({ ...current, imagem_capa_url: e.target.value }))} className="bg-secondary border-border flex-1" />
                 <label className="cursor-pointer">
                   <Button variant="outline" className="border-border" disabled={uploading} asChild>
                     <span>
@@ -188,37 +287,39 @@ export default function AdminProducts() {
                 </label>
               </div>
               {form.imagem_capa_url && (
-                <img src={form.imagem_capa_url} alt="Preview" className="h-32 w-full rounded object-cover" />
+                <img src={form.imagem_capa_url} alt="Prévia da capa do produto" className="h-32 w-full rounded object-cover" loading="lazy" />
               )}
             </div>
 
-            <Input placeholder="Texto da imagem de capa" value={form.texto_imagem_capa} onChange={(e) => setForm(f => ({ ...f, texto_imagem_capa: e.target.value }))} className="bg-secondary border-border" />
+            <Input placeholder="Texto da imagem de capa" value={form.texto_imagem_capa} onChange={(e) => setForm((current) => ({ ...current, texto_imagem_capa: e.target.value }))} className="bg-secondary border-border" />
             <div className="flex gap-4 items-center">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground">Cor destaque:</label>
-                <Input type="color" value={form.cor_destaque} onChange={(e) => setForm(f => ({ ...f, cor_destaque: e.target.value }))} className="w-12 h-10 p-1 bg-secondary border-border" />
+                <Input type="color" value={form.cor_destaque} onChange={(e) => setForm((current) => ({ ...current, cor_destaque: e.target.value }))} className="w-12 h-10 p-1 bg-secondary border-border" />
               </div>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.is_active} onChange={(e) => setForm(f => ({ ...f, is_active: e.target.checked }))} />
+                <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((current) => ({ ...current, is_active: e.target.checked }))} />
                 Ativo
               </label>
             </div>
-            <Button onClick={save} disabled={saving} className="w-full font-display tracking-wider">
+            <Button onClick={save} disabled={saving || uploading} className="w-full font-display tracking-wider">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> SALVANDO...</> : 'SALVAR'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog open={!!deleting} onOpenChange={(nextOpen) => !nextOpen && !deletingBusy && setDeleting(null)}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogCancel className="border-border" disabled={deletingBusy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deletingBusy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deletingBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</> : 'Excluir'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
