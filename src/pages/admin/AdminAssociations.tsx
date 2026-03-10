@@ -257,7 +257,7 @@ export default function AdminAssociations() {
         <div className="space-y-6">
           <div className="rounded-lg border border-border bg-card p-4">
             <h3 className="font-semibold">{selectedUser.nome_completo}</h3>
-            <p className="text-xs text-muted-foreground">{selectedUser.email || `ID: ${selectedUser.id}`}</p>
+            <p className="text-xs text-muted-foreground">ID: {selectedUser.id.slice(0, 8)}</p>
           </div>
 
           <div className="flex gap-3 items-end">
