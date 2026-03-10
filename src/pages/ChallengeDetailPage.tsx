@@ -146,7 +146,7 @@ export default function ChallengeDetailPage() {
               const isLocked = !day.liberado;
 
               const cardBg = day.imagem_url ? null : (
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/8 to-accent/10" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-accent/20 to-primary/8" />
               );
               const cardImg = day.imagem_url ? (
                 <div className="absolute inset-0">
@@ -163,12 +163,12 @@ export default function ChallengeDetailPage() {
                   {cardImg}
                   {cardBg}
 
-                  {/* Border overlay */}
-                  <div className={`absolute inset-0 rounded-2xl border-2 transition-all duration-300 ${
+                  {/* Glassmorphism border overlay */}
+                  <div className={`absolute inset-0 rounded-2xl border transition-all duration-300 ${
                     isLocked
-                      ? 'border-border/30 group-hover:border-border/50'
-                      : 'border-border/30 group-hover:border-[#22C55E] group-hover:shadow-[0_8px_30px_-8px_rgba(34,197,94,0.3)]'
-                  }`} />
+                      ? 'border-white/40 group-hover:border-white/60'
+                      : 'border-white/50 group-hover:border-primary group-hover:shadow-green-glow'
+                  }`} style={{ backdropFilter: 'blur(1px)' }} />
 
                   {/* Completed badge — always visible */}
                   {completed && (
@@ -198,7 +198,7 @@ export default function ChallengeDetailPage() {
 
                   {/* Main content */}
                   <div className="relative flex flex-col items-center justify-center h-full p-4 text-center z-10 pointer-events-none">
-                    <span className={`text-4xl font-bold leading-none ${textColor}`}>
+                    <span className={`font-display text-5xl font-bold leading-none ${textColor}`}>
                       {day.numero_dia}
                     </span>
                     <span className={`text-xs mt-2 line-clamp-2 font-medium ${subTextColor}`}>
