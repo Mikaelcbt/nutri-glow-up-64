@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
 
 interface Product { id: string; nome: string; slug: string; descricao: string; imagem_capa_url: string; cor_destaque: string; }
-interface Module { id: string; titulo: string; descricao: string; ordem: number; texto_destaque_palavra: string; cor_destaque: string; }
+interface Module { id: string; titulo: string; descricao: string; ordem: number; texto_destaque_palavra: string; cor_destaque: string; imagem_url?: string; }
 interface Lesson { id: string; titulo: string; descricao: string; ordem: number; is_preview: boolean; }
 
 export default function ProgramPage() {
