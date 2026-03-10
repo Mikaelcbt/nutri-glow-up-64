@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
   { title: 'Início', path: '/app', icon: Home },
@@ -22,9 +23,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -37,33 +46,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {navItems.map((item, i) => {
             const isActive = location.pathname === item.path;
             return (
-              <Link
+              <motion.div
                 key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                }`}
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05, duration: 0.3 }}
               >
-                <item.icon className="h-4 w-4" />
-                {item.title}
-              </Link>
+                <Link
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-accent text-accent-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground hover:translate-x-1'
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.title}
+                </Link>
+              </motion.div>
             );
           })}
           {profile?.role === 'admin' && (
-            <Link
-              to="/admin"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-200"
-            >
-              <Shield className="h-4 w-4" />
-              Painel Admin
-            </Link>
+            <motion.div initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+              <Link
+                to="/admin"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground hover:translate-x-1 transition-all duration-200"
+              >
+                <Shield className="h-4 w-4" />
+                Painel Admin
+              </Link>
+            </motion.div>
           )}
         </nav>
 
@@ -82,7 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             variant="ghost"
             size="sm"
             onClick={signOut}
-            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            className="w-full justify-start text-muted-foreground hover:text-foreground active:scale-[0.97] transition-transform"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sair
