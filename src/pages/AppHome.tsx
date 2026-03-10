@@ -26,6 +26,7 @@ interface LessonProgress {
 
 export default function AppHome() {
   const { user, profile } = useAuth();
+  const [allProducts, setAllProducts] = useState<AllProduct[]>([]);
   const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [continueWatching, setContinueWatching] = useState<LessonProgress[]>([]);
