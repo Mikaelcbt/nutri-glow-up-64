@@ -9,6 +9,9 @@ import { toast } from 'sonner';
 import { Plus, Heart, MessageCircle, Trash2, Loader2, Upload, Send } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Post {
   id: string; user_id: string; conteudo: string; imagem_url: string | null;
@@ -149,97 +152,129 @@ export default function CommunityPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-display text-3xl font-semibold text-foreground">Comunidade</h1>
-          <Button onClick={() => setOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova publicação</Button>
+      <AnimatedPage>
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          <motion.div variants={fadeInUp} initial="initial" animate="animate" className="flex items-center justify-between mb-8">
+            <h1 className="font-display text-3xl font-semibold text-foreground">Comunidade</h1>
+            <Button onClick={() => setOpen(true)} className="active:scale-[0.97] transition-transform"><Plus className="mr-2 h-4 w-4" /> Nova publicação</Button>
+          </motion.div>
+
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="rounded-2xl border border-border bg-card p-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-9 w-9 rounded-full shimmer" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-24 shimmer" />
+                      <Skeleton className="h-3 w-16 shimmer" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-16 w-full shimmer" />
+                </div>
+              ))}
+            </div>
+          ) : posts.length === 0 ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 text-muted-foreground">
+              <MessageCircle className="h-12 w-12 mx-auto mb-4 text-border" />
+              <p>Nenhuma publicação ainda. Seja o primeiro!</p>
+            </motion.div>
+          ) : (
+            <motion.div className="space-y-4" variants={staggerContainer} initial="initial" animate="animate">
+              {posts.map(post => {
+                const initial = post.nome_completo.charAt(0).toUpperCase();
+                return (
+                  <motion.div
+                    key={post.id}
+                    variants={fadeInUp}
+                    className="rounded-2xl border border-border bg-card p-5 shadow-card hover:shadow-soft transition-shadow duration-300"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">{initial}</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">{post.nome_completo}</p>
+                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(post.criado_em), { locale: ptBR, addSuffix: true })}</p>
+                      </div>
+                      {post.user_id === user?.id && (
+                        <button onClick={() => deletePost(post.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-foreground mb-3 whitespace-pre-wrap">{post.conteudo}</p>
+                    {post.imagem_url && <img src={post.imagem_url} alt="" className="rounded-xl mb-3 max-h-96 w-full object-cover" />}
+
+                    <div className="flex items-center gap-4 border-t border-border pt-3">
+                      <motion.button
+                        onClick={() => toggleLike(post.id, post.liked)}
+                        whileTap={{ scale: 1.3 }}
+                        className={`flex items-center gap-1.5 text-sm transition-colors ${post.liked ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                      >
+                        <Heart className={`h-4 w-4 ${post.liked ? 'fill-primary' : ''}`} /> {post.like_count}
+                      </motion.button>
+                      <button onClick={() => loadComments(post.id)}
+                        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <MessageCircle className="h-4 w-4" /> {post.comment_count}
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {expandedComments === post.id && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-3 border-t border-border pt-3 space-y-3">
+                            {(comments[post.id] || []).map(c => (
+                              <div key={c.id} className="flex gap-2">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-xs font-bold text-foreground">{c.nome_completo.charAt(0).toUpperCase()}</div>
+                                <div className="flex-1 rounded-xl bg-secondary p-2.5">
+                                  <p className="text-xs font-semibold text-foreground">{c.nome_completo}</p>
+                                  <p className="text-sm text-foreground mt-0.5">{c.conteudo}</p>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="flex gap-2">
+                              <input value={newComment} onChange={(e) => setNewComment(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && addComment(post.id)}
+                                placeholder="Escreva um comentário..." className="flex-1 rounded-xl bg-secondary px-3 py-2 text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary" />
+                              <Button size="sm" onClick={() => addComment(post.id)} disabled={commentingOn === post.id} className="active:scale-[0.97] transition-transform">
+                                {commentingOn === post.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <MessageCircle className="h-12 w-12 mx-auto mb-4 text-border" />
-            <p>Nenhuma publicação ainda. Seja o primeiro!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {posts.map(post => {
-              const initial = post.nome_completo.charAt(0).toUpperCase();
-              return (
-                <div key={post.id} className="rounded-2xl border border-border bg-card p-5 shadow-card">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">{initial}</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">{post.nome_completo}</p>
-                      <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(post.criado_em), { locale: ptBR, addSuffix: true })}</p>
-                    </div>
-                    {post.user_id === user?.id && (
-                      <button onClick={() => deletePost(post.id)} className="text-muted-foreground hover:text-destructive transition-colors">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-foreground mb-3 whitespace-pre-wrap">{post.conteudo}</p>
-                  {post.imagem_url && <img src={post.imagem_url} alt="" className="rounded-xl mb-3 max-h-96 w-full object-cover" />}
-
-                  <div className="flex items-center gap-4 border-t border-border pt-3">
-                    <button onClick={() => toggleLike(post.id, post.liked)}
-                      className={`flex items-center gap-1.5 text-sm transition-colors ${post.liked ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
-                      <Heart className={`h-4 w-4 ${post.liked ? 'fill-primary' : ''}`} /> {post.like_count}
-                    </button>
-                    <button onClick={() => loadComments(post.id)}
-                      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      <MessageCircle className="h-4 w-4" /> {post.comment_count}
-                    </button>
-                  </div>
-
-                  {expandedComments === post.id && (
-                    <div className="mt-3 border-t border-border pt-3 space-y-3">
-                      {(comments[post.id] || []).map(c => (
-                        <div key={c.id} className="flex gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-xs font-bold text-foreground">{c.nome_completo.charAt(0).toUpperCase()}</div>
-                          <div className="flex-1 rounded-xl bg-secondary p-2.5">
-                            <p className="text-xs font-semibold text-foreground">{c.nome_completo}</p>
-                            <p className="text-sm text-foreground mt-0.5">{c.conteudo}</p>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="flex gap-2">
-                        <input value={newComment} onChange={(e) => setNewComment(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addComment(post.id)}
-                          placeholder="Escreva um comentário..." className="flex-1 rounded-xl bg-secondary px-3 py-2 text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary" />
-                        <Button size="sm" onClick={() => addComment(post.id)} disabled={commentingOn === post.id}>
-                          {commentingOn === post.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-card border-border">
-          <DialogHeader><DialogTitle className="font-display text-2xl">Nova publicação</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <Textarea placeholder="O que você quer compartilhar?" value={newContent}
-              onChange={(e) => setNewContent(e.target.value)} rows={4} className="bg-secondary border-border" />
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
-              <Upload className="h-4 w-4" />
-              {newImage ? newImage.name : 'Adicionar imagem'}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => setNewImage(e.target.files?.[0] || null)} />
-            </label>
-            <Button onClick={createPost} disabled={posting || !newContent.trim()} className="w-full">
-              {posting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publicando...</> : 'Publicar'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="bg-card border-border">
+            <DialogHeader><DialogTitle className="font-display text-2xl">Nova publicação</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <Textarea placeholder="O que você quer compartilhar?" value={newContent}
+                onChange={(e) => setNewContent(e.target.value)} rows={4} className="bg-secondary border-border" />
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Upload className="h-4 w-4" />
+                {newImage ? newImage.name : 'Adicionar imagem'}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => setNewImage(e.target.files?.[0] || null)} />
+              </label>
+              <Button onClick={createPost} disabled={posting || !newContent.trim()} className="w-full active:scale-[0.97] transition-transform">
+                {posting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publicando...</> : 'Publicar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </AnimatedPage>
     </AppLayout>
   );
 }

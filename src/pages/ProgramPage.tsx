@@ -7,6 +7,8 @@ import Breadcrumb from '@/components/Breadcrumb';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronRight, Play, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
 
 interface Product { id: string; nome: string; slug: string; descricao: string; imagem_capa_url: string; cor_destaque: string; }
 interface Module { id: string; titulo: string; descricao: string; ordem: number; texto_destaque_palavra: string; cor_destaque: string; }
@@ -62,8 +64,8 @@ export default function ProgramPage() {
     return (
       <AppLayout>
         <div className="space-y-4 px-8 py-8 md:px-16">
-          <Skeleton className="h-[350px] w-full rounded-2xl" />
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}
+          <Skeleton className="h-[350px] w-full rounded-2xl shimmer" />
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-2xl shimmer" />)}
         </div>
       </AppLayout>
     );
@@ -81,80 +83,121 @@ export default function ProgramPage() {
 
   return (
     <AppLayout>
-      <Breadcrumb items={[
-        { label: 'Início', href: '/app' },
-        { label: product.nome },
-      ]} />
+      <AnimatedPage>
+        <Breadcrumb items={[
+          { label: 'Início', href: '/app' },
+          { label: product.nome },
+        ]} />
 
-      {/* Header */}
-      <section className="relative overflow-hidden" style={{ height: 350 }}>
-        <img src={product.imagem_capa_url || '/placeholder.svg'} alt={product.nome} className="h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-        <div className="absolute bottom-8 left-8 md:left-16 space-y-4">
-          <h1 className="font-display text-5xl md:text-6xl font-semibold text-foreground">{product.nome}</h1>
-          <p className="max-w-xl text-muted-foreground">{product.descricao}</p>
-          <div className="flex items-center gap-4 max-w-md">
-            <Progress value={overallProgress} className="h-2 flex-1" />
-            <span className="text-sm text-primary font-bold">{Math.round(overallProgress)}%</span>
-          </div>
-        </div>
-      </section>
+        {/* Header */}
+        <section className="relative overflow-hidden" style={{ height: 350 }}>
+          <motion.img
+            src={product.imagem_capa_url || '/placeholder.svg'}
+            alt={product.nome}
+            className="h-full w-full object-cover"
+            initial={{ scale: 1.05 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.8 }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          <motion.div
+            className="absolute bottom-8 left-8 md:left-16 space-y-4"
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+          >
+            <motion.h1 variants={fadeInUp} className="font-display text-5xl md:text-6xl font-semibold text-foreground">{product.nome}</motion.h1>
+            <motion.p variants={fadeInUp} className="max-w-xl text-muted-foreground">{product.descricao}</motion.p>
+            <motion.div variants={fadeInUp} className="flex items-center gap-4 max-w-md">
+              <Progress value={overallProgress} className="h-2 flex-1" />
+              <span className="text-sm text-primary font-bold">{Math.round(overallProgress)}%</span>
+            </motion.div>
+          </motion.div>
+        </section>
 
-      {/* Modules */}
-      <section className="px-8 py-12 md:px-16">
-        <h2 className="mb-8 font-display text-3xl font-semibold text-foreground">Módulos</h2>
-        <div className="space-y-4">
-          {modules.map((mod, i) => (
-            <div key={mod.id} className="rounded-2xl border border-border bg-card shadow-card overflow-hidden transition-shadow hover:shadow-soft">
-              <button
-                onClick={() => toggleModule(mod.id)}
-                className="flex w-full items-center justify-between p-5 text-left hover:bg-secondary/50 transition-colors"
+        {/* Modules */}
+        <section className="px-8 py-12 md:px-16">
+          <motion.h2 variants={fadeInUp} initial="initial" animate="animate" className="mb-8 font-display text-3xl font-semibold text-foreground">Módulos</motion.h2>
+          <div className="space-y-4">
+            {modules.map((mod, i) => (
+              <motion.div
+                key={mod.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08, duration: 0.35 }}
+                className="rounded-2xl border border-border bg-card shadow-card overflow-hidden transition-all duration-300 hover:shadow-soft"
               >
-                <div className="flex items-center gap-4">
-                  <span
-                    className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-card"
-                    style={{ backgroundColor: mod.cor_destaque || '#22C55E' }}
+                <button
+                  onClick={() => toggleModule(mod.id)}
+                  className="flex w-full items-center justify-between p-5 text-left hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <span
+                      className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-card"
+                      style={{ backgroundColor: mod.cor_destaque || '#22C55E' }}
+                    >
+                      {i + 1}
+                    </span>
+                    <div>
+                      <h3 className="font-display text-xl font-semibold text-foreground">{mod.titulo}</h3>
+                      <p className="text-sm text-muted-foreground">{mod.descricao}</p>
+                    </div>
+                  </div>
+                  <motion.div
+                    animate={{ rotate: expandedModule === mod.id ? 90 : 0 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    {i + 1}
-                  </span>
-                  <div>
-                    <h3 className="font-display text-xl font-semibold text-foreground">{mod.titulo}</h3>
-                    <p className="text-sm text-muted-foreground">{mod.descricao}</p>
-                  </div>
-                </div>
-                <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${expandedModule === mod.id ? 'rotate-90' : ''}`} />
-              </button>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </motion.div>
+                </button>
 
-              {expandedModule === mod.id && moduleLessons[mod.id] && (
-                <div className="border-t border-border p-5 bg-secondary/30">
-                  <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-                    {moduleLessons[mod.id].map((lesson) => (
-                      <Link
-                        key={lesson.id}
-                        to={`/app/aula/${lesson.id}`}
-                        className="group flex-shrink-0 w-56 rounded-xl bg-card border border-border overflow-hidden hover:shadow-soft transition-all duration-200"
-                      >
-                        <div className="aspect-video bg-secondary flex items-center justify-center relative">
-                          <Play className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                          {completedLessons.has(lesson.id) && (
-                            <div className="absolute top-2 right-2">
-                              <CheckCircle2 className="h-5 w-5 text-primary" />
-                            </div>
-                          )}
+                <AnimatePresence>
+                  {expandedModule === mod.id && moduleLessons[mod.id] && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="border-t border-border p-5 bg-secondary/30">
+                        <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                          {moduleLessons[mod.id].map((lesson, li) => (
+                            <motion.div
+                              key={lesson.id}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: li * 0.05 }}
+                            >
+                              <Link
+                                to={`/app/aula/${lesson.id}`}
+                                className="group flex-shrink-0 w-56 rounded-xl bg-card border border-border overflow-hidden hover:shadow-soft hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 block"
+                              >
+                                <div className="aspect-video bg-secondary flex items-center justify-center relative">
+                                  <Play className="h-8 w-8 text-muted-foreground group-hover:text-primary group-hover:scale-110 transition-all" />
+                                  {completedLessons.has(lesson.id) && (
+                                    <div className="absolute top-2 right-2">
+                                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="p-3">
+                                  <h4 className="text-sm font-semibold truncate text-foreground">{lesson.titulo}</h4>
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{lesson.descricao}</p>
+                                </div>
+                              </Link>
+                            </motion.div>
+                          ))}
                         </div>
-                        <div className="p-3">
-                          <h4 className="text-sm font-semibold truncate text-foreground">{lesson.titulo}</h4>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{lesson.descricao}</p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      </AnimatedPage>
     </AppLayout>
   );
 }
