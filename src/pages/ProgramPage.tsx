@@ -79,7 +79,7 @@ export default function ProgramPage() {
           .eq('user_id', user.id)
           .eq('concluido', true);
 
-        const completed = new Set(progress?.map(p => p.lesson_id) || []);
+        const completed = new Set<string>(progress?.map(p => p.lesson_id as string) || []);
         setCompletedLessons(completed);
         const total = allLessons.length;
         const done = allLessons.filter(l => completed.has(l.id)).length;
