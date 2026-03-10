@@ -146,7 +146,7 @@ export default function ChallengeDetailPage() {
               const isLocked = !day.liberado;
 
               const cardBg = day.imagem_url ? null : (
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/8 to-accent/10" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-accent/20 to-primary/8" />
               );
               const cardImg = day.imagem_url ? (
                 <div className="absolute inset-0">
