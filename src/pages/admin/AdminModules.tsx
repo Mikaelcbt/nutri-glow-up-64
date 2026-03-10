@@ -18,6 +18,7 @@ interface Module {
   ordem: number;
   texto_destaque_palavra: string;
   cor_destaque: string;
+  imagem_url: string | null;
 }
 
 interface Product {
@@ -48,7 +49,7 @@ export default function AdminModules() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
   const [form, setForm] = useState({
-    titulo: '', descricao: '', ordem: 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT,
+    titulo: '', descricao: '', ordem: 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT, imagem_url: '',
   });
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function AdminModules() {
   const openNew = () => {
     setEditing(null);
     setPageError('');
-    setForm({ titulo: '', descricao: '', ordem: modules.length + 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT });
+    setForm({ titulo: '', descricao: '', ordem: modules.length + 1, texto_destaque_palavra: '', cor_destaque: DEFAULT_HIGHLIGHT, imagem_url: '' });
     setOpen(true);
   };
 
@@ -118,6 +119,7 @@ export default function AdminModules() {
       ordem: module.ordem,
       texto_destaque_palavra: module.texto_destaque_palavra || '',
       cor_destaque: module.cor_destaque || DEFAULT_HIGHLIGHT,
+      imagem_url: module.imagem_url || '',
     });
     setOpen(true);
   };
@@ -147,6 +149,7 @@ export default function AdminModules() {
         titulo: form.titulo.trim(),
         descricao: form.descricao.trim(),
         texto_destaque_palavra: form.texto_destaque_palavra.trim(),
+        imagem_url: form.imagem_url.trim() || null,
       };
 
       if (editing) {
@@ -247,7 +250,11 @@ export default function AdminModules() {
           {modules.map((module) => (
             <div key={module.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors">
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">{module.ordem}</span>
+                {module.imagem_url ? (
+                  <img src={module.imagem_url} alt={module.titulo} className="h-12 w-12 rounded-lg object-cover" />
+                ) : (
+                  <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">{module.ordem}</span>
+                )}
                 <div>
                   <h3 className="font-semibold">{module.titulo}</h3>
                   <p className="text-xs text-muted-foreground">{module.descricao}</p>
@@ -274,6 +281,13 @@ export default function AdminModules() {
             <Textarea placeholder="Descrição" value={form.descricao} onChange={(e) => setForm((current) => ({ ...current, descricao: e.target.value }))} className="bg-secondary border-border" />
             <Input type="number" placeholder="Ordem" value={form.ordem} onChange={(e) => setForm((current) => ({ ...current, ordem: parseInt(e.target.value, 10) || 1 }))} className="bg-secondary border-border" />
             <Input placeholder="Palavra destaque" value={form.texto_destaque_palavra} onChange={(e) => setForm((current) => ({ ...current, texto_destaque_palavra: e.target.value }))} className="bg-secondary border-border" />
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">URL da imagem do módulo (opcional)</label>
+              <Input placeholder="https://exemplo.com/imagem.jpg" value={form.imagem_url} onChange={(e) => setForm((current) => ({ ...current, imagem_url: e.target.value }))} className="bg-secondary border-border" />
+              {form.imagem_url && (
+                <img src={form.imagem_url} alt="Preview" className="mt-2 h-24 w-auto rounded-lg object-cover border border-border" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-muted-foreground">Cor destaque:</label>
               <Input type="color" value={form.cor_destaque} onChange={(e) => setForm((current) => ({ ...current, cor_destaque: e.target.value }))} className="w-12 h-10 p-1 bg-secondary border-border" />
