@@ -20,7 +20,6 @@ interface Association {
 interface FoundUser {
   id: string;
   nome_completo: string;
-  email?: string | null;
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -81,8 +80,8 @@ export default function AdminAssociations() {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, nome_completo, email')
-        .or(`nome_completo.ilike.%${searchTerm.trim()}%,email.ilike.%${searchTerm.trim()}%`)
+        .select('id, nome_completo')
+        .ilike('nome_completo', `%${searchTerm.trim()}%`)
         .limit(10);
 
       if (error) throw error;
@@ -98,7 +97,6 @@ export default function AdminAssociations() {
       const users: FoundUser[] = profiles.map((profile) => ({
         id: profile.id,
         nome_completo: profile.nome_completo || 'Sem nome',
-        email: 'email' in profile ? profile.email : null,
       }));
 
       setFoundUsers(users);
@@ -249,7 +247,7 @@ export default function AdminAssociations() {
               className="w-full text-left rounded-lg border border-border bg-card p-3 hover:border-primary/50 transition-colors"
             >
               <span className="font-semibold">{user.nome_completo}</span>
-              <span className="block text-xs text-muted-foreground mt-1">{user.email || `ID: ${user.id}`}</span>
+              <span className="block text-xs text-muted-foreground mt-1">ID: {user.id.slice(0, 8)}</span>
             </button>
           ))}
         </div>
@@ -259,7 +257,7 @@ export default function AdminAssociations() {
         <div className="space-y-6">
           <div className="rounded-lg border border-border bg-card p-4">
             <h3 className="font-semibold">{selectedUser.nome_completo}</h3>
-            <p className="text-xs text-muted-foreground">{selectedUser.email || `ID: ${selectedUser.id}`}</p>
+            <p className="text-xs text-muted-foreground">ID: {selectedUser.id.slice(0, 8)}</p>
           </div>
 
           <div className="flex gap-3 items-end">
