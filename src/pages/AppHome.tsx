@@ -12,6 +12,10 @@ interface Product {
   id: string; nome: string; slug: string; descricao: string;
   imagem_capa_url: string; texto_imagem_capa: string; cor_destaque: string; is_active: boolean;
 }
+interface AllProduct {
+  id: string; nome: string; slug: string; descricao: string;
+  imagem_capa_url: string; is_active: boolean;
+}
 interface Module {
   id: string; product_id: string; titulo: string; descricao: string;
   ordem: number; texto_destaque_palavra: string; cor_destaque: string;
