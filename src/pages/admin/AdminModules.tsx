@@ -281,6 +281,13 @@ export default function AdminModules() {
             <Textarea placeholder="Descrição" value={form.descricao} onChange={(e) => setForm((current) => ({ ...current, descricao: e.target.value }))} className="bg-secondary border-border" />
             <Input type="number" placeholder="Ordem" value={form.ordem} onChange={(e) => setForm((current) => ({ ...current, ordem: parseInt(e.target.value, 10) || 1 }))} className="bg-secondary border-border" />
             <Input placeholder="Palavra destaque" value={form.texto_destaque_palavra} onChange={(e) => setForm((current) => ({ ...current, texto_destaque_palavra: e.target.value }))} className="bg-secondary border-border" />
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">URL da imagem do módulo (opcional)</label>
+              <Input placeholder="https://exemplo.com/imagem.jpg" value={form.imagem_url} onChange={(e) => setForm((current) => ({ ...current, imagem_url: e.target.value }))} className="bg-secondary border-border" />
+              {form.imagem_url && (
+                <img src={form.imagem_url} alt="Preview" className="mt-2 h-24 w-auto rounded-lg object-cover border border-border" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-muted-foreground">Cor destaque:</label>
               <Input type="color" value={form.cor_destaque} onChange={(e) => setForm((current) => ({ ...current, cor_destaque: e.target.value }))} className="w-12 h-10 p-1 bg-secondary border-border" />
