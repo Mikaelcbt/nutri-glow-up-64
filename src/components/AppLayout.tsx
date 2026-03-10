@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NutriChatFloat from '@/components/NutriChatFloat';
+import NotificationBell from '@/components/NotificationBell';
 
 const navItems = [
   { title: 'Início', path: '/app', icon: Home },
