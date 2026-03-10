@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
-import { ChevronLeft, ChevronRight, Play, BookOpen, Layers } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, BookOpen, Layers, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
   id: string; nome: string; slug: string; descricao: string;
@@ -20,20 +21,21 @@ interface LessonProgress {
 }
 
 export default function AppHome() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [continueWatching, setContinueWatching] = useState<LessonProgress[]>([]);
   const [productProgress, setProductProgress] = useState(0);
   const [moduleStats, setModuleStats] = useState({ modules: 0, lessons: 0 });
+  const [loading, setLoading] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (user) loadData(); }, [user]);
 
   const loadData = async () => {
     if (!user) return;
+    setLoading(true);
     try {
-      // Show all active products to everyone (access is controlled via admin associations)
       const { data: products } = await supabase
         .from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
 
@@ -67,7 +69,7 @@ export default function AppHome() {
       }
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
-    }
+    } finally { setLoading(false); }
   };
 
   const scrollCarousel = (direction: 'left' | 'right') => {
@@ -87,8 +89,28 @@ export default function AppHome() {
 
   const moduleColors = ['#22C55E', '#3B82F6', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6'];
 
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="px-8 py-8 md:px-16 space-y-6">
+          <Skeleton className="h-[60vh] w-full rounded-2xl" />
+          <div className="flex gap-5">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-80 w-52 rounded-2xl flex-shrink-0" />)}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
+      {/* Welcome */}
+      <div className="px-8 pt-6 md:px-16">
+        <h2 className="text-lg text-muted-foreground">
+          Olá, <span className="text-foreground font-semibold">{profile?.nome_completo || 'Usuário'}</span>! 👋
+        </h2>
+      </div>
+
       {/* Hero */}
       {featuredProduct ? (
         <section className="relative h-[80vh] w-full overflow-hidden">
@@ -139,10 +161,13 @@ export default function AppHome() {
           </div>
         </section>
       ) : (
-        <section className="flex h-[60vh] items-center justify-center">
-          <div className="text-center space-y-4">
-            <h1 className="font-display text-4xl text-foreground font-semibold">Bem-vindo ao JP NutriCare</h1>
-            <p className="text-muted-foreground">Você ainda não tem programas ativos. Aguarde a liberação do acesso.</p>
+        <section className="flex h-[60vh] items-center justify-center px-4">
+          <div className="text-center space-y-4 max-w-md">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-accent">
+              <Clock className="h-8 w-8 text-accent-foreground" />
+            </div>
+            <h1 className="font-display text-3xl text-foreground font-semibold">Aguardando liberação de acesso</h1>
+            <p className="text-muted-foreground">Seu acesso a um programa ainda não foi liberado. Entre em contato com a nutricionista para mais informações.</p>
           </div>
         </section>
       )}

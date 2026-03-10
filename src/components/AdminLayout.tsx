@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Package, Layers, BookOpen, Users, LogOut, Home, ImageIcon, FileText } from 'lucide-react';
+import { Package, Layers, BookOpen, Users, LogOut, Home, ImageIcon, FileText, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
+  { title: 'Dashboard', path: '/admin', icon: LayoutDashboard },
   { title: 'Produtos', path: '/admin/produtos', icon: Package },
   { title: 'Módulos', path: '/admin/modulos', icon: Layers },
   { title: 'Aulas', path: '/admin/aulas', icon: BookOpen },
