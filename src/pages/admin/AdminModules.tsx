@@ -149,6 +149,7 @@ export default function AdminModules() {
         titulo: form.titulo.trim(),
         descricao: form.descricao.trim(),
         texto_destaque_palavra: form.texto_destaque_palavra.trim(),
+        imagem_url: form.imagem_url.trim() || null,
       };
 
       if (editing) {
