@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, BookOpen, Users, Award, ArrowRight } from 'lucide-react';
+import { ChevronRight, BookOpen, Users, Award, ArrowRight, Star, Sparkles, Heart, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { staggerContainer, fadeInUp, fadeInRight } from '@/components/AnimatedPage';
 
