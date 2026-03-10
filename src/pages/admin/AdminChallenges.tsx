@@ -31,11 +31,8 @@ interface DayData {
   video_url: string;
   pdf_url: string;
   alimentos: string;
-  receita: string;
   liberado: boolean;
-}
-
-interface DietData {
+  // Diet columns
   cafe_manha: string;
   lanche_manha: string;
   almoco: string;
@@ -43,10 +40,7 @@ interface DietData {
   jantar: string;
   ceia: string;
   observacoes: string;
-  alimentos_permitidos: string;
-}
-
-interface RecipeData {
+  // Recipe columns
   titulo_receita: string;
   ingredientes: string;
   modo_preparo: string;
@@ -60,15 +54,11 @@ interface Stats {
   totalParticipants: number;
 }
 
-const emptyDiet: DietData = { cafe_manha: '', lanche_manha: '', almoco: '', lanche_tarde: '', jantar: '', ceia: '', observacoes: '', alimentos_permitidos: '' };
-const emptyRecipe: RecipeData = { titulo_receita: '', ingredientes: '', modo_preparo: '', tempo_preparo: '', rendimento: '' };
-
-function parseDiet(raw: string): DietData {
-  try { const p = JSON.parse(raw); return { ...emptyDiet, ...p }; } catch { return { ...emptyDiet, alimentos_permitidos: raw || '' }; }
-}
-function parseRecipe(raw: string): RecipeData {
-  try { const p = JSON.parse(raw); return { ...emptyRecipe, ...p }; } catch { return { ...emptyRecipe, modo_preparo: raw || '' }; }
-}
+const emptyDay: Partial<DayData> = {
+  titulo: '', video_url: '', pdf_url: '', alimentos: '', liberado: false,
+  cafe_manha: '', lanche_manha: '', almoco: '', lanche_tarde: '', jantar: '', ceia: '', observacoes: '',
+  titulo_receita: '', ingredientes: '', modo_preparo: '', tempo_preparo: '', rendimento: '',
+};
 
 export default function AdminChallenges() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -81,13 +71,10 @@ export default function AdminChallenges() {
   const [stats, setStats] = useState<Stats>({ totalChallenges: 0, totalDays: 0, totalParticipants: 0 });
   const [daysCount, setDaysCount] = useState<Record<string, { total: number; liberados: number }>>({});
 
-  // Day management
   const [managingChallenge, setManagingChallenge] = useState<Challenge | null>(null);
   const [days, setDays] = useState<DayData[]>([]);
   const [daysLoading, setDaysLoading] = useState(false);
   const [editingDay, setEditingDay] = useState<DayData | null>(null);
-  const [editDiet, setEditDiet] = useState<DietData>(emptyDiet);
-  const [editRecipe, setEditRecipe] = useState<RecipeData>(emptyRecipe);
   const [savingDay, setSavingDay] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -161,7 +148,7 @@ export default function AdminChallenges() {
       if (!data) { toast.error('Desafio não foi criado - verifique as permissões RLS'); setSaving(false); return; }
 
       const daysToInsert = Array.from({ length: form.total_dias }, (_, i) => ({
-        desafio_id: data.id, numero_dia: i + 1, titulo: '', video_url: '', pdf_url: '', alimentos: '', receita: '', liberado: false,
+        desafio_id: data.id, numero_dia: i + 1, titulo: '', video_url: '', pdf_url: '', alimentos: '', liberado: false,
       }));
       const { error: daysError } = await supabase.from('desafio_dias').insert(daysToInsert);
       if (daysError) toast.error('Desafio criado mas erro ao gerar dias: ' + daysError.message);
@@ -191,7 +178,6 @@ export default function AdminChallenges() {
     load();
   };
 
-  // === Day management ===
   const openManage = async (c: Challenge) => {
     setManagingChallenge(c);
     setDaysLoading(true);
@@ -241,8 +227,6 @@ export default function AdminChallenges() {
 
   const openDayEdit = (day: DayData) => {
     setEditingDay({ ...day });
-    setEditDiet(parseDiet(day.alimentos));
-    setEditRecipe(parseRecipe(day.receita));
   };
 
   const handleDayPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,17 +247,27 @@ export default function AdminChallenges() {
       titulo: editingDay.titulo,
       video_url: editingDay.video_url,
       pdf_url: editingDay.pdf_url,
-      alimentos: JSON.stringify(editDiet),
-      receita: JSON.stringify(editRecipe),
+      alimentos: editingDay.alimentos,
       liberado: editingDay.liberado,
+      cafe_manha: editingDay.cafe_manha || '',
+      lanche_manha: editingDay.lanche_manha || '',
+      almoco: editingDay.almoco || '',
+      lanche_tarde: editingDay.lanche_tarde || '',
+      jantar: editingDay.jantar || '',
+      ceia: editingDay.ceia || '',
+      observacoes: editingDay.observacoes || '',
+      titulo_receita: editingDay.titulo_receita || '',
+      ingredientes: editingDay.ingredientes || '',
+      modo_preparo: editingDay.modo_preparo || '',
+      tempo_preparo: editingDay.tempo_preparo || '',
+      rendimento: editingDay.rendimento || '',
     }).eq('id', editingDay.id);
 
     if (error) {
       toast.error('Erro ao salvar dia: ' + error.message);
     } else {
       toast.success(`Dia ${editingDay.numero_dia} salvo!`);
-      const updatedDay = { ...editingDay, alimentos: JSON.stringify(editDiet), receita: JSON.stringify(editRecipe) };
-      setDays(prev => prev.map(d => d.id === editingDay.id ? updatedDay : d));
+      setDays(prev => prev.map(d => d.id === editingDay.id ? { ...editingDay } : d));
       setEditingDay(null);
     }
     setSavingDay(false);
@@ -284,14 +278,18 @@ export default function AdminChallenges() {
     return m?.[1] || null;
   };
 
-  const MealField = ({ label, emoji, value, onChange, rows = 3 }: { label: string; emoji: string; value: string; onChange: (v: string) => void; rows?: number }) => (
+  const updateDay = (field: keyof DayData, value: string | boolean) => {
+    setEditingDay(prev => prev ? { ...prev, [field]: value } : null);
+  };
+
+  const MealField = ({ label, emoji, field, rows = 3 }: { label: string; emoji: string; field: keyof DayData; rows?: number }) => (
     <div className="space-y-1.5">
       <Label className="flex items-center gap-1.5 text-sm font-medium">
         <span>{emoji}</span> {label}
       </Label>
       <Textarea
-        value={value}
-        onChange={e => onChange(e.target.value)}
+        value={(editingDay?.[field] as string) || ''}
+        onChange={e => updateDay(field, e.target.value)}
         rows={rows}
         placeholder={`Descreva o ${label.toLowerCase()}...`}
         className="text-sm resize-none"
@@ -321,13 +319,11 @@ export default function AdminChallenges() {
           ))}
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Desafios</h1>
           <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Novo Desafio</Button>
         </div>
 
-        {/* List */}
         {loading ? (
           <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
         ) : challenges.length === 0 ? (
@@ -445,19 +441,18 @@ export default function AdminChallenges() {
                 <TabsTrigger value="receita">Receita do Dia</TabsTrigger>
               </TabsList>
 
-              {/* Tab Geral */}
               <TabsContent value="geral" className="space-y-4 mt-4">
                 <div>
                   <Label>Título do dia</Label>
-                  <Input value={editingDay.titulo} onChange={e => setEditingDay(prev => prev ? { ...prev, titulo: e.target.value } : null)} placeholder="Ex: Detox inicial" />
+                  <Input value={editingDay.titulo} onChange={e => updateDay('titulo', e.target.value)} placeholder="Ex: Detox inicial" />
                 </div>
                 <div className="flex items-center gap-3">
-                  <Switch checked={editingDay.liberado} onCheckedChange={v => setEditingDay(prev => prev ? { ...prev, liberado: v } : null)} />
+                  <Switch checked={editingDay.liberado} onCheckedChange={v => updateDay('liberado', v)} />
                   <Label>Liberado para alunos</Label>
                 </div>
                 <div>
                   <Label>URL do Vídeo <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-                  <Input value={editingDay.video_url} onChange={e => setEditingDay(prev => prev ? { ...prev, video_url: e.target.value } : null)} placeholder="YouTube, Vimeo ou link direto" />
+                  <Input value={editingDay.video_url} onChange={e => updateDay('video_url', e.target.value)} placeholder="YouTube, Vimeo ou link direto" />
                   {editingDay.video_url && getYouTubeId(editingDay.video_url) && (
                     <div className="mt-2 aspect-video rounded-lg overflow-hidden border border-border">
                       <iframe src={`https://www.youtube.com/embed/${getYouTubeId(editingDay.video_url)}`} className="w-full h-full" allowFullScreen />
@@ -466,24 +461,23 @@ export default function AdminChallenges() {
                 </div>
               </TabsContent>
 
-              {/* Tab Dieta */}
               <TabsContent value="dieta" className="space-y-4 mt-4">
-                <MealField label="Café da manhã" emoji="🌅" value={editDiet.cafe_manha} onChange={v => setEditDiet(d => ({ ...d, cafe_manha: v }))} />
-                <MealField label="Lanche da manhã" emoji="☀️" value={editDiet.lanche_manha} onChange={v => setEditDiet(d => ({ ...d, lanche_manha: v }))} />
-                <MealField label="Almoço" emoji="🥗" value={editDiet.almoco} onChange={v => setEditDiet(d => ({ ...d, almoco: v }))} />
-                <MealField label="Lanche da tarde" emoji="🌤️" value={editDiet.lanche_tarde} onChange={v => setEditDiet(d => ({ ...d, lanche_tarde: v }))} />
-                <MealField label="Jantar" emoji="🌙" value={editDiet.jantar} onChange={v => setEditDiet(d => ({ ...d, jantar: v }))} />
-                <MealField label="Ceia" emoji="🌜" value={editDiet.ceia} onChange={v => setEditDiet(d => ({ ...d, ceia: v }))} />
+                <MealField label="Café da manhã" emoji="🌅" field="cafe_manha" />
+                <MealField label="Lanche da manhã" emoji="☀️" field="lanche_manha" />
+                <MealField label="Almoço" emoji="🥗" field="almoco" />
+                <MealField label="Lanche da tarde" emoji="🌤️" field="lanche_tarde" />
+                <MealField label="Jantar" emoji="🌙" field="jantar" />
+                <MealField label="Ceia" emoji="🌜" field="ceia" />
 
                 <div className="border-t border-border pt-4">
-                  <MealField label="Alimentos permitidos hoje" emoji="✅" value={editDiet.alimentos_permitidos} onChange={v => setEditDiet(d => ({ ...d, alimentos_permitidos: v }))} rows={4} />
+                  <MealField label="Alimentos permitidos hoje" emoji="✅" field="alimentos" rows={4} />
                 </div>
-                <MealField label="Observações e dicas do dia" emoji="💡" value={editDiet.observacoes} onChange={v => setEditDiet(d => ({ ...d, observacoes: v }))} rows={4} />
+                <MealField label="Observações e dicas do dia" emoji="💡" field="observacoes" rows={4} />
 
                 <div>
                   <Label>PDF complementar <span className="text-muted-foreground font-normal">(opcional)</span></Label>
                   <div className="flex gap-2 mt-1">
-                    <Input value={editingDay.pdf_url} onChange={e => setEditingDay(prev => prev ? { ...prev, pdf_url: e.target.value } : null)} placeholder="URL do PDF" className="flex-1 text-sm" />
+                    <Input value={editingDay.pdf_url} onChange={e => updateDay('pdf_url', e.target.value)} placeholder="URL do PDF" className="flex-1 text-sm" />
                     <Button variant="outline" size="sm" asChild>
                       <label className="cursor-pointer"><Upload className="h-4 w-4 mr-1" /> PDF<input type="file" accept=".pdf" className="hidden" onChange={handleDayPdfUpload} /></label>
                     </Button>
@@ -492,28 +486,27 @@ export default function AdminChallenges() {
                 </div>
               </TabsContent>
 
-              {/* Tab Receita */}
               <TabsContent value="receita" className="space-y-4 mt-4">
                 <div>
                   <Label>Título da receita</Label>
-                  <Input value={editRecipe.titulo_receita} onChange={e => setEditRecipe(r => ({ ...r, titulo_receita: e.target.value }))} placeholder="Ex: Sopa detox de legumes" />
+                  <Input value={editingDay.titulo_receita || ''} onChange={e => updateDay('titulo_receita', e.target.value)} placeholder="Ex: Sopa detox de legumes" />
                 </div>
                 <div>
                   <Label>Ingredientes</Label>
-                  <Textarea value={editRecipe.ingredientes} onChange={e => setEditRecipe(r => ({ ...r, ingredientes: e.target.value }))} rows={5} placeholder="Liste os ingredientes..." />
+                  <Textarea value={editingDay.ingredientes || ''} onChange={e => updateDay('ingredientes', e.target.value)} rows={5} placeholder="Liste os ingredientes..." />
                 </div>
                 <div>
                   <Label>Modo de preparo</Label>
-                  <Textarea value={editRecipe.modo_preparo} onChange={e => setEditRecipe(r => ({ ...r, modo_preparo: e.target.value }))} rows={5} placeholder="Descreva o passo a passo..." />
+                  <Textarea value={editingDay.modo_preparo || ''} onChange={e => updateDay('modo_preparo', e.target.value)} rows={5} placeholder="Descreva o passo a passo..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Tempo de preparo</Label>
-                    <Input value={editRecipe.tempo_preparo} onChange={e => setEditRecipe(r => ({ ...r, tempo_preparo: e.target.value }))} placeholder="Ex: 30 minutos" />
+                    <Input value={editingDay.tempo_preparo || ''} onChange={e => updateDay('tempo_preparo', e.target.value)} placeholder="Ex: 30 minutos" />
                   </div>
                   <div>
                     <Label>Rendimento</Label>
-                    <Input value={editRecipe.rendimento} onChange={e => setEditRecipe(r => ({ ...r, rendimento: e.target.value }))} placeholder="Ex: 4 porções" />
+                    <Input value={editingDay.rendimento || ''} onChange={e => updateDay('rendimento', e.target.value)} placeholder="Ex: 4 porções" />
                   </div>
                 </div>
               </TabsContent>

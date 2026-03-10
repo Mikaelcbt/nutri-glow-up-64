@@ -19,11 +19,7 @@ interface DayData {
   video_url: string;
   pdf_url: string;
   alimentos: string;
-  receita: string;
   liberado: boolean;
-}
-
-interface DietData {
   cafe_manha: string;
   lanche_manha: string;
   almoco: string;
@@ -31,25 +27,11 @@ interface DietData {
   jantar: string;
   ceia: string;
   observacoes: string;
-  alimentos_permitidos: string;
-}
-
-interface RecipeData {
   titulo_receita: string;
   ingredientes: string;
   modo_preparo: string;
   tempo_preparo: string;
   rendimento: string;
-}
-
-const emptyDiet: DietData = { cafe_manha: '', lanche_manha: '', almoco: '', lanche_tarde: '', jantar: '', ceia: '', observacoes: '', alimentos_permitidos: '' };
-const emptyRecipe: RecipeData = { titulo_receita: '', ingredientes: '', modo_preparo: '', tempo_preparo: '', rendimento: '' };
-
-function parseDiet(raw: string): DietData {
-  try { return { ...emptyDiet, ...JSON.parse(raw) }; } catch { return { ...emptyDiet, alimentos_permitidos: raw || '' }; }
-}
-function parseRecipe(raw: string): RecipeData {
-  try { return { ...emptyRecipe, ...JSON.parse(raw) }; } catch { return { ...emptyRecipe, modo_preparo: raw || '' }; }
 }
 
 function VideoPlayer({ url }: { url: string }) {
@@ -78,7 +60,7 @@ function VideoPlayer({ url }: { url: string }) {
   );
 }
 
-const meals: { key: keyof DietData; label: string; emoji: string }[] = [
+const mealFields: { key: keyof DayData; label: string; emoji: string }[] = [
   { key: 'cafe_manha', label: 'Café da manhã', emoji: '🌅' },
   { key: 'lanche_manha', label: 'Lanche da manhã', emoji: '☀️' },
   { key: 'almoco', label: 'Almoço', emoji: '🥗' },
@@ -157,11 +139,9 @@ export default function ChallengeDayPage() {
     );
   }
 
-  const diet = parseDiet(day.alimentos);
-  const recipe = parseRecipe(day.receita);
-  const hasMeals = meals.some(m => diet[m.key]?.trim());
-  const hasRecipe = recipe.titulo_receita || recipe.ingredientes || recipe.modo_preparo;
-  const alimentosChips = diet.alimentos_permitidos?.split(/[,\n]/).map(s => s.trim()).filter(Boolean) || [];
+  const hasMeals = mealFields.some(m => (day[m.key] as string)?.trim());
+  const hasRecipe = day.titulo_receita?.trim() || day.ingredientes?.trim() || day.modo_preparo?.trim();
+  const alimentosChips = day.alimentos?.split(/[,\n]/).map(s => s.trim()).filter(Boolean) || [];
 
   return (
     <AppLayout>
@@ -186,7 +166,7 @@ export default function ChallengeDayPage() {
           </motion.div>
 
           {/* Video */}
-          {day.video_url && (
+          {day.video_url?.trim() && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <VideoPlayer url={day.video_url} />
             </motion.div>
@@ -197,14 +177,11 @@ export default function ChallengeDayPage() {
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="space-y-4">
               <h2 className="font-display text-xl font-semibold text-foreground">🍽️ Dieta de Hoje</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {meals.map(({ key, label, emoji }) => {
-                  const content = diet[key]?.trim();
+                {mealFields.map(({ key, label, emoji }) => {
+                  const content = (day[key] as string)?.trim();
                   if (!content) return null;
                   return (
-                    <div
-                      key={key}
-                      className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow space-y-2"
-                    >
+                    <div key={key} className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xl">{emoji}</span>
                         <h3 className="font-medium text-foreground text-sm">{label}</h3>
@@ -238,23 +215,23 @@ export default function ChallengeDayPage() {
                 <ChefHat className="inline h-5 w-5 mr-1.5" /> Receita do Dia
               </h2>
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                {recipe.titulo_receita && <h3 className="text-lg font-semibold text-foreground">{recipe.titulo_receita}</h3>}
-                {(recipe.tempo_preparo || recipe.rendimento) && (
+                {day.titulo_receita?.trim() && <h3 className="text-lg font-semibold text-foreground">{day.titulo_receita}</h3>}
+                {(day.tempo_preparo?.trim() || day.rendimento?.trim()) && (
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    {recipe.tempo_preparo && <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {recipe.tempo_preparo}</span>}
-                    {recipe.rendimento && <span>📦 {recipe.rendimento}</span>}
+                    {day.tempo_preparo?.trim() && <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {day.tempo_preparo}</span>}
+                    {day.rendimento?.trim() && <span>📦 {day.rendimento}</span>}
                   </div>
                 )}
-                {recipe.ingredientes && (
+                {day.ingredientes?.trim() && (
                   <div>
                     <h4 className="text-sm font-semibold text-foreground mb-1.5">Ingredientes</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{recipe.ingredientes}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{day.ingredientes}</p>
                   </div>
                 )}
-                {recipe.modo_preparo && (
+                {day.modo_preparo?.trim() && (
                   <div>
                     <h4 className="text-sm font-semibold text-foreground mb-1.5">Modo de Preparo</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{recipe.modo_preparo}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{day.modo_preparo}</p>
                   </div>
                 )}
               </div>
@@ -262,17 +239,17 @@ export default function ChallengeDayPage() {
           )}
 
           {/* Observações */}
-          {diet.observacoes?.trim() && (
+          {day.observacoes?.trim() && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-2">
                 <h2 className="font-display text-lg font-semibold text-foreground">💡 Observações e Dicas</h2>
-                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{diet.observacoes}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{day.observacoes}</p>
               </div>
             </motion.section>
           )}
 
           {/* PDF */}
-          {day.pdf_url && (
+          {day.pdf_url?.trim() && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
               <Button asChild variant="outline" className="w-full" size="lg">
                 <a href={day.pdf_url} target="_blank" rel="noopener noreferrer">
