@@ -6,7 +6,8 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Pencil, Loader2, CheckCircle2 } from 'lucide-react';
+import { Pencil, Loader2, CheckCircle2, Award, BookOpen, Star, Trophy } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProfilePage() {
   const { user, profile } = useAuth();
@@ -15,8 +16,16 @@ export default function ProfilePage() {
   const [newName, setNewName] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [completedHistory, setCompletedHistory] = useState<{ titulo: string; concluido_em: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [badges, setBadges] = useState<{ icon: any; label: string; earned: boolean }[]>([]);
 
-  useEffect(() => { if (user) { loadProgress(); loadHistory(); } }, [user]);
+  useEffect(() => { if (user) loadAll(); }, [user]);
+
+  const loadAll = async () => {
+    setLoading(true);
+    await Promise.all([loadProgress(), loadHistory(), loadBadges()]);
+    setLoading(false);
+  };
 
   const loadProgress = async () => {
     if (!user) return;
@@ -54,6 +63,43 @@ export default function ProfilePage() {
     } catch (err) { console.error(err); }
   };
 
+  const loadBadges = async () => {
+    if (!user) return;
+    try {
+      const { data: progress } = await supabase.from('rastreamento_progresso')
+        .select('lesson_id, concluido').eq('user_id', user.id);
+      
+      const hasFirstAccess = true;
+      const completedLessons = progress?.filter(p => p.concluido) || [];
+      const hasFirstLesson = completedLessons.length >= 1;
+
+      // Check module completion
+      let hasModuleComplete = false;
+      let hasProgramComplete = false;
+      
+      if (completedLessons.length > 0) {
+        const lessonIds = completedLessons.map(p => p.lesson_id);
+        const { data: lessons } = await supabase.from('lessons').select('id, module_id').in('id', lessonIds);
+        const moduleIds = [...new Set(lessons?.map(l => l.module_id) || [])];
+        
+        for (const modId of moduleIds) {
+          const { data: modLessons } = await supabase.from('lessons').select('id').eq('module_id', modId);
+          if (modLessons && modLessons.every(l => lessonIds.includes(l.id))) {
+            hasModuleComplete = true;
+            break;
+          }
+        }
+      }
+
+      setBadges([
+        { icon: Star, label: 'Primeiro acesso', earned: hasFirstAccess },
+        { icon: BookOpen, label: 'Primeira aula concluída', earned: hasFirstLesson },
+        { icon: Award, label: 'Módulo completo', earned: hasModuleComplete },
+        { icon: Trophy, label: 'Programa completo', earned: hasProgramComplete },
+      ]);
+    } catch (err) { console.error(err); }
+  };
+
   const saveName = async () => {
     if (!user || !newName.trim()) return;
     setSavingName(true);
@@ -67,6 +113,21 @@ export default function ProfilePage() {
   };
 
   const initial = profile?.nome_completo?.charAt(0)?.toUpperCase() || 'U';
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="mx-auto max-w-2xl px-4 py-16 space-y-6">
+          <div className="flex flex-col items-center gap-4">
+            <Skeleton className="h-24 w-24 rounded-full" />
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -94,6 +155,23 @@ export default function ProfilePage() {
           )}
           <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
         </div>
+
+        {/* Badges */}
+        {badges.length > 0 && (
+          <div className="mb-12">
+            <h2 className="font-display text-2xl font-semibold mb-4 text-foreground">Conquistas</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {badges.map((b, i) => (
+                <div key={i} className={`rounded-2xl border p-4 text-center transition-all ${
+                  b.earned ? 'border-primary bg-accent shadow-card' : 'border-border bg-card opacity-40'
+                }`}>
+                  <b.icon className={`h-6 w-6 mx-auto mb-2 ${b.earned ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <p className="text-xs font-medium text-foreground">{b.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <h2 className="font-display text-2xl font-semibold mb-6 text-foreground">Meus Programas</h2>
         {programs.length > 0 ? (

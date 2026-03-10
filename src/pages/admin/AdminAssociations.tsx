@@ -173,6 +173,21 @@ export default function AdminAssociations() {
       if (!data) throw new Error('Não foi possível conceder acesso. Verifique a permissão de admin no RLS.');
 
       toast.success('Acesso concedido com sucesso!');
+
+      // Try to send notification email via edge function
+      const productName = products.find(p => p.id === selectedProduct)?.nome || 'Programa';
+      try {
+        await supabase.functions.invoke('notify-access', {
+          body: {
+            user_name: selectedUser.nome_completo,
+            product_name: productName,
+          },
+        });
+      } catch {
+        // Edge function may not be deployed yet — silent fail
+        console.warn('Edge function notify-access not available');
+      }
+
       await loadUserAssociations(selectedUser.id);
     } catch (error) {
       const message = getErrorMessage(error, 'Erro ao conceder acesso.');

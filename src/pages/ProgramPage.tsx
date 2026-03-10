@@ -3,7 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
+import Breadcrumb from '@/components/Breadcrumb';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronRight, Play, CheckCircle2 } from 'lucide-react';
 
 interface Product { id: string; nome: string; slug: string; descricao: string; imagem_capa_url: string; cor_destaque: string; }
@@ -19,13 +21,15 @@ export default function ProgramPage() {
   const [moduleLessons, setModuleLessons] = useState<Record<string, Lesson[]>>({});
   const [overallProgress, setOverallProgress] = useState(0);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { if (slug) loadProduct(); }, [slug, user]);
 
   const loadProduct = async () => {
+    setLoading(true);
     try {
       const { data: prod } = await supabase.from('products').select('*').eq('slug', slug).eq('is_active', true).maybeSingle();
-      if (!prod) return;
+      if (!prod) { setLoading(false); return; }
       setProduct(prod);
       const { data: mods } = await supabase.from('modules').select('*').eq('product_id', prod.id).order('ordem');
       if (mods) {
@@ -42,6 +46,7 @@ export default function ProgramPage() {
         }
       }
     } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   const toggleModule = async (moduleId: string) => {
@@ -53,11 +58,22 @@ export default function ProgramPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="space-y-4 px-8 py-8 md:px-16">
+          <Skeleton className="h-[350px] w-full rounded-2xl" />
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!product) {
     return (
       <AppLayout>
         <div className="flex h-[60vh] items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-muted-foreground">Programa não encontrado.</p>
         </div>
       </AppLayout>
     );
@@ -65,6 +81,11 @@ export default function ProgramPage() {
 
   return (
     <AppLayout>
+      <Breadcrumb items={[
+        { label: 'Início', href: '/app' },
+        { label: product.nome },
+      ]} />
+
       {/* Header */}
       <section className="relative overflow-hidden" style={{ height: 350 }}>
         <img src={product.imagem_capa_url || '/placeholder.svg'} alt={product.nome} className="h-full w-full object-cover" />
