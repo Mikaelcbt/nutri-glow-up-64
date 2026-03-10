@@ -250,7 +250,11 @@ export default function AdminModules() {
           {modules.map((module) => (
             <div key={module.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors">
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">{module.ordem}</span>
+                {module.imagem_url ? (
+                  <img src={module.imagem_url} alt={module.titulo} className="h-12 w-12 rounded-lg object-cover" />
+                ) : (
+                  <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">{module.ordem}</span>
+                )}
                 <div>
                   <h3 className="font-semibold">{module.titulo}</h3>
                   <p className="text-xs text-muted-foreground">{module.descricao}</p>
