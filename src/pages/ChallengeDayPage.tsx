@@ -60,6 +60,23 @@ function VideoPlayer({ url }: { url: string }) {
   );
 }
 
+/** Checks if HTML content has meaningful text (not just empty tags) */
+function hasContent(html: string | undefined | null): boolean {
+  if (!html) return false;
+  const stripped = html.replace(/<[^>]*>/g, '').trim();
+  return stripped.length > 0;
+}
+
+/** Renders HTML content with styled prose */
+function RichContent({ html, className = '' }: { html: string; className?: string }) {
+  return (
+    <div
+      className={`rich-content text-sm leading-relaxed ${className}`}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 const mealFields: { key: keyof DayData; label: string; emoji: string }[] = [
   { key: 'cafe_manha', label: 'Café da manhã', emoji: '🌅' },
   { key: 'lanche_manha', label: 'Lanche da manhã', emoji: '☀️' },
@@ -139,9 +156,8 @@ export default function ChallengeDayPage() {
     );
   }
 
-  const hasMeals = mealFields.some(m => (day[m.key] as string)?.trim());
-  const hasRecipe = day.titulo_receita?.trim() || day.ingredientes?.trim() || day.modo_preparo?.trim();
-  const alimentosChips = day.alimentos?.split(/[,\n]/).map(s => s.trim()).filter(Boolean) || [];
+  const hasMeals = mealFields.some(m => hasContent(day[m.key] as string));
+  const hasRecipe = hasContent(day.titulo_receita) || hasContent(day.ingredientes) || hasContent(day.modo_preparo);
 
   return (
     <AppLayout>
@@ -178,15 +194,15 @@ export default function ChallengeDayPage() {
               <h2 className="font-display text-xl font-semibold text-foreground">🍽️ Dieta de Hoje</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {mealFields.map(({ key, label, emoji }) => {
-                  const content = (day[key] as string)?.trim();
-                  if (!content) return null;
+                  const content = day[key] as string;
+                  if (!hasContent(content)) return null;
                   return (
                     <div key={key} className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xl">{emoji}</span>
                         <h3 className="font-medium text-foreground text-sm">{label}</h3>
                       </div>
-                      <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{content}</p>
+                      <RichContent html={content} />
                     </div>
                   );
                 })}
@@ -194,16 +210,12 @@ export default function ChallengeDayPage() {
             </motion.section>
           )}
 
-          {/* Alimentos Permitidos Chips */}
-          {alimentosChips.length > 0 && (
+          {/* Alimentos Permitidos */}
+          {hasContent(day.alimentos) && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-3">
               <h2 className="font-display text-xl font-semibold text-foreground">✅ Alimentos Permitidos Hoje</h2>
-              <div className="flex flex-wrap gap-2">
-                {alimentosChips.map((item, i) => (
-                  <span key={i} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-primary/10 text-primary border border-primary/20">
-                    {item}
-                  </span>
-                ))}
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <RichContent html={day.alimentos} />
               </div>
             </motion.section>
           )}
@@ -215,23 +227,23 @@ export default function ChallengeDayPage() {
                 <ChefHat className="inline h-5 w-5 mr-1.5" /> Receita do Dia
               </h2>
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                {day.titulo_receita?.trim() && <h3 className="text-lg font-semibold text-foreground">{day.titulo_receita}</h3>}
+                {hasContent(day.titulo_receita) && <h3 className="text-lg font-semibold text-foreground">{day.titulo_receita}</h3>}
                 {(day.tempo_preparo?.trim() || day.rendimento?.trim()) && (
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     {day.tempo_preparo?.trim() && <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {day.tempo_preparo}</span>}
                     {day.rendimento?.trim() && <span>📦 {day.rendimento}</span>}
                   </div>
                 )}
-                {day.ingredientes?.trim() && (
+                {hasContent(day.ingredientes) && (
                   <div>
                     <h4 className="text-sm font-semibold text-foreground mb-1.5">Ingredientes</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{day.ingredientes}</p>
+                    <RichContent html={day.ingredientes} />
                   </div>
                 )}
-                {day.modo_preparo?.trim() && (
+                {hasContent(day.modo_preparo) && (
                   <div>
                     <h4 className="text-sm font-semibold text-foreground mb-1.5">Modo de Preparo</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{day.modo_preparo}</p>
+                    <RichContent html={day.modo_preparo} />
                   </div>
                 )}
               </div>
@@ -239,11 +251,11 @@ export default function ChallengeDayPage() {
           )}
 
           {/* Observações */}
-          {day.observacoes?.trim() && (
+          {hasContent(day.observacoes) && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-2">
                 <h2 className="font-display text-lg font-semibold text-foreground">💡 Observações e Dicas</h2>
-                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{day.observacoes}</p>
+                <RichContent html={day.observacoes} />
               </div>
             </motion.section>
           )}
