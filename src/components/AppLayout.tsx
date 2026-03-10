@@ -120,12 +120,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="flex h-14 items-center border-b border-border px-4 lg:hidden bg-card">
-          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)}>
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="ml-3 font-display text-lg font-semibold text-foreground">JP NutriCare</span>
+        <header className="flex h-14 items-center justify-between border-b border-border px-4 lg:hidden bg-card">
+          <div className="flex items-center">
+            <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)}>
+              <Menu className="h-5 w-5" />
+            </Button>
+            <span className="ml-3 font-display text-lg font-semibold text-foreground">JP NutriCare</span>
+          </div>
+          <NotificationBell />
         </header>
+
+        {/* Desktop notification bell */}
+        <div className="hidden lg:flex h-14 items-center justify-end border-b border-border px-6 bg-card">
+          <NotificationBell />
+        </div>
 
         <main className="flex-1 scroll-smooth">{children}</main>
         <NutriChatFloat />
