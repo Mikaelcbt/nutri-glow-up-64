@@ -18,6 +18,7 @@ import ProfilePage from "./pages/ProfilePage";
 import CommunityPage from "./pages/CommunityPage";
 import TransformationsPage from "./pages/TransformationsPage";
 import MaterialsPage from "./pages/MaterialsPage";
+import NutriIAPage from "./pages/NutriIAPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminModules from "./pages/admin/AdminModules";
