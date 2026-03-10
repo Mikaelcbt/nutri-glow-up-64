@@ -18,6 +18,7 @@ interface Module {
   ordem: number;
   texto_destaque_palavra: string;
   cor_destaque: string;
+  imagem_url: string | null;
 }
 
 interface Product {
