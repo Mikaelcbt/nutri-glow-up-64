@@ -91,8 +91,25 @@ export default function AdminChallenges() {
       supabase.from('desafio_progresso').select('user_id'),
     ]);
 
-    const allDays = daysRes.data || [];
+    let allDays = daysRes.data || [];
     const uniqueParticipants = new Set((participantsRes.data || []).map(p => p.user_id));
+
+    // Auto-create days for existing challenges that have no days
+    const challengeIdsWithDays = new Set(allDays.map(d => d.desafio_id));
+    const challengesWithoutDays = (data || []).filter(c => !challengeIdsWithDays.has(c.id) && c.total_dias > 0);
+    if (challengesWithoutDays.length > 0) {
+      const missingDays = challengesWithoutDays.flatMap(c =>
+        Array.from({ length: c.total_dias }, (_, i) => ({
+          desafio_id: c.id, numero_dia: i + 1, titulo: `Dia ${i + 1}`, liberado: false,
+        }))
+      );
+      const { data: createdDays, error: missingErr } = await supabase.from('desafio_dias').insert(missingDays).select('id, desafio_id, liberado');
+      if (!missingErr && createdDays) {
+        allDays = [...allDays, ...createdDays];
+        toast.success(`Dias criados automaticamente para ${challengesWithoutDays.length} desafio(s)`);
+      }
+    }
+
     setStats({ totalChallenges: (data || []).length, totalDays: allDays.length, totalParticipants: uniqueParticipants.size });
 
     const counts: Record<string, { total: number; liberados: number }> = {};
