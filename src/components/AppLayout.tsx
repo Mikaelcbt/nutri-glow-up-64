@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield, Sparkles } from 'lucide-react';
+import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield, Sparkles, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useState } from 'react';
