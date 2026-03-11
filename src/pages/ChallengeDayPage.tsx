@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { Download, CheckCircle, ArrowLeft, Clock, ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 interface DayData {
   id: string;
@@ -67,12 +68,13 @@ function hasContent(html: string | undefined | null): boolean {
   return stripped.length > 0;
 }
 
-/** Renders HTML content with styled prose */
+/** Renders HTML content with styled prose, sanitized against XSS */
 function RichContent({ html, className = '' }: { html: string; className?: string }) {
+  const clean = DOMPurify.sanitize(html);
   return (
     <div
       className={`rich-content text-sm leading-relaxed ${className}`}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: clean }}
     />
   );
 }
