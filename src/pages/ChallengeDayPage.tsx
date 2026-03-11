@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { Download, CheckCircle, ArrowLeft, Clock, ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 interface DayData {
   id: string;
