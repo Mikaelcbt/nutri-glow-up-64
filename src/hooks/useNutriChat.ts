@@ -9,6 +9,8 @@ export interface ChatMessage {
   criado_em: string;
 }
 
+const FUNCTION_URL = 'https://zpubzpnzdyhqrvoahkwj.supabase.co/functions/v1/ai-nutritionist';
+
 export function useNutriChat() {
   const { user, profile } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -16,7 +18,6 @@ export function useNutriChat() {
   const [sending, setSending] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
 
-  // Check if user has active association or is admin
   useEffect(() => {
     if (!user) return;
     if (profile?.role === 'admin') {
@@ -32,7 +33,6 @@ export function useNutriChat() {
       .then(({ data }) => setHasAccess((data?.length ?? 0) > 0));
   }, [user, profile]);
 
-  // Load history
   const loadHistory = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -57,7 +57,7 @@ export function useNutriChat() {
     try {
       console.log('[NutriIA] Sending message:', text);
 
-      // 1. Save user message
+      // 1. Save user message to DB
       const { data: inserted, error: insertErr } = await supabase
         .from('conversas_ia')
         .insert({ user_id: user.id, role: 'user', conteudo: text })
@@ -69,107 +69,55 @@ export function useNutriChat() {
         setMessages(prev => [...prev, inserted as ChatMessage]);
       }
 
-      // 2. Get context (don't block on errors)
-      let programs: any[] = [];
-      let progressData: any[] = [];
-
-      try {
-        const [programsRes, progressRes] = await Promise.all([
-          supabase
-            .from('associacoes')
-            .select('product:products(nome, descricao), status')
-            .eq('user_id', user.id)
-            .eq('status', 'ativo'),
-          supabase
-            .from('rastreamento_progresso')
-            .select('lesson:lessons(titulo, module:modules(titulo))')
-            .eq('user_id', user.id)
-            .eq('concluido', true),
-        ]);
-        programs = programsRes.data ?? [];
-        progressData = progressRes.data ?? [];
-      } catch (ctxErr) {
-        console.error('[NutriIA] Context fetch error (non-blocking):', ctxErr);
-      }
-
-      // 3. Build messages for the AI
+      // 2. Build messages array for AI (filter out old fallback messages)
       const recentMessages = messages
         .slice(-10)
-        .filter(m => m.conteudo?.trim() && m.conteudo !== 'Não consegui gerar resposta.')
+        .filter(m => {
+          const c = m.conteudo?.trim();
+          return c && !c.startsWith('Erro') && c !== 'Não consegui gerar resposta.';
+        })
         .map(m => ({ role: m.role, content: m.conteudo }));
       recentMessages.push({ role: 'user', content: text });
 
-      // 4. Call edge function via supabase.functions.invoke
-      console.log('[NutriIA] Invoking ai-nutritionist...');
-      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-nutritionist', {
-        body: {
+      // 3. Get auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+
+      // 4. Call edge function via direct fetch (bypasses any SDK caching)
+      console.log('[NutriIA] Calling edge function via fetch...');
+      const response = await fetch(FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           messages: recentMessages,
           user_name: profile.nome_completo || 'Aluno',
-          programs,
-          progress: progressData,
-        },
+        }),
       });
 
-      // 5. Handle response
-      if (fnError) {
-        console.error('[NutriIA] Function invoke error:', fnError.message, fnError.name);
+      console.log('[NutriIA] Edge function HTTP status:', response.status);
+      const responseText = await response.text();
+      console.log('[NutriIA] Edge function raw response:', responseText);
 
-        let errBody = fnData as { error?: string; detail?: string } | null;
-
-        if (!errBody && typeof fnError === 'object' && fnError && 'context' in fnError) {
-          try {
-            const response = (fnError as { context?: Response }).context;
-            if (response) {
-              errBody = await response.clone().json();
-            }
-          } catch (parseErr) {
-            console.error('[NutriIA] Failed to parse function error body:', parseErr);
-          }
-        }
-
-        console.error('[NutriIA] Error body:', JSON.stringify(errBody));
-
-        if (fnError.name === 'FunctionsFetchError') {
-          throw new Error('Falha de conexão ao chamar a NutriIA. Atualize a página e tente novamente.');
-        }
-        if (errBody?.error === 'auth_missing' || errBody?.error === 'auth_invalid') {
-          throw new Error('Erro de autenticação. Faça login novamente.');
-        }
-        if (errBody?.error === 'forbidden') {
-          throw new Error(errBody.detail || 'Você precisa de uma assinatura ativa para usar a NutriIA.');
-        }
-        if (errBody?.error === 'rate_limit') {
-          throw new Error(errBody.detail || 'Muitas requisições. Aguarde um momento.');
-        }
-        if (errBody?.error === 'credits') {
-          throw new Error(errBody.detail || 'Créditos de IA esgotados.');
-        }
-        if (errBody?.error === 'config_error') {
-          throw new Error('Serviço de IA não configurado. Contate o administrador.');
-        }
-        if (errBody?.error === 'ai_error') {
-          throw new Error(errBody.detail || 'Erro no serviço de IA. Tente novamente.');
-        }
-        if (errBody?.error === 'empty_response') {
-          throw new Error(errBody.detail || 'A IA não retornou uma resposta. Tente novamente.');
-        }
-        if (errBody?.error === 'internal') {
-          throw new Error(errBody.detail || 'Erro interno ao consultar a NutriIA.');
-        }
-
-        throw new Error(errBody?.detail || fnError.message || 'Erro ao consultar a NutriIA.');
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`Resposta inválida do servidor: ${responseText.substring(0, 200)}`);
       }
 
-      console.log('[NutriIA] Response data:', fnData);
-
-      // Extract reply from standardized response
-      const reply = (fnData as { reply?: string })?.reply;
-      if (!reply) {
-        console.error('[NutriIA] Missing reply field in response:', fnData);
-        throw new Error('Resposta inesperada da IA. Tente novamente.');
+      const reply = data?.reply;
+      if (!reply || reply.startsWith('Erro')) {
+        throw new Error(reply || 'A IA não retornou uma resposta válida.');
       }
 
-      // 6. Save AI response
+      // 5. Save AI response
       const { data: aiInserted, error: aiInsertErr } = await supabase
         .from('conversas_ia')
         .insert({ user_id: user.id, role: 'assistant', conteudo: reply })
@@ -181,7 +129,7 @@ export function useNutriChat() {
         setMessages(prev => [...prev, aiInserted as ChatMessage]);
       }
     } catch (err: any) {
-      console.error('[NutriIA] Final error:', err?.message || err);
+      console.error('[NutriIA] Error:', err?.message || err);
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
