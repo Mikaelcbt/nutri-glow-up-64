@@ -1,5 +1,5 @@
-const CACHE_NAME = 'jp-nutricare-v2';
-const urlsToCache = [
+const CACHE_NAME = 'jp-nutricare-v3';
+const APP_SHELL_URLS = [
   '/',
   '/app',
   '/manifest.json',
@@ -9,7 +9,9 @@ const urlsToCache = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(APP_SHELL_URLS);
+    })
   );
   self.skipWaiting();
 });
@@ -17,37 +19,54 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+      Promise.all(names.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const { request } = event;
 
-  const url = event.request.url;
+  if (request.method !== 'GET') return;
 
-  // Never intercept external requests (Supabase, Google APIs, etc.)
-  if (!url.startsWith(self.location.origin)) return;
+  const url = new URL(request.url);
 
-  // Don't cache OAuth routes
-  if (url.includes('/~oauth')) return;
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.includes('/~oauth')) return;
+
+  const isNavigationRequest = request.mode === 'navigate' || request.destination === 'document';
+
+  if (isNavigationRequest) {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cachedAppShell = await caches.match('/');
+        return cachedAppShell || new Response('Offline', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
+      })
+    );
+    return;
+  }
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    caches.match(request).then((cachedResponse) => {
+      const networkRequest = fetch(request)
+        .then((response) => {
+          if (response.ok && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return response;
+        })
+        .catch(() => cachedResponse || Response.error());
+
+      return cachedResponse || networkRequest;
+    })
   );
 });
 
-// Push notification handler
 self.addEventListener('push', (event) => {
   let data = { title: 'JP NutriCare', body: 'Você tem uma nova notificação!', url: '/app/desafios' };
 
@@ -71,7 +90,6 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
-// Notification click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url || '/app';
