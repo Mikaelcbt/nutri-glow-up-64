@@ -32,14 +32,15 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
 
-    if (userError || !user) {
-      console.error("Auth failed:", userError?.message);
+    if (claimsError || !claimsData?.claims) {
+      console.error("JWT validation failed:", claimsError?.message ?? claimsError);
       return json({ error: "auth_invalid", detail: "Invalid or expired token" }, 401);
     }
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
 
     // ── Body ─────────────────────────────────────────────
     const { messages, user_name, programs, progress } = await req.json();
