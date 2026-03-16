@@ -1,4 +1,4 @@
-// NutriIA Edge Function v2 - stable
+// NutriIA Edge Function v3 - force redeploy
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
