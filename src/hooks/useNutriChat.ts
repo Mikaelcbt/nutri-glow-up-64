@@ -108,11 +108,25 @@ export function useNutriChat() {
       // 5. Handle response
       if (fnError) {
         console.error('[NutriIA] Function invoke error:', fnError.message, fnError.name);
-        
-        // supabase.functions.invoke puts parsed body in fnData even on error
-        const errBody = fnData as { error?: string; detail?: string } | null;
+
+        let errBody = fnData as { error?: string; detail?: string } | null;
+
+        if (!errBody && typeof fnError === 'object' && fnError && 'context' in fnError) {
+          try {
+            const response = (fnError as { context?: Response }).context;
+            if (response) {
+              errBody = await response.clone().json();
+            }
+          } catch (parseErr) {
+            console.error('[NutriIA] Failed to parse function error body:', parseErr);
+          }
+        }
+
         console.error('[NutriIA] Error body:', JSON.stringify(errBody));
 
+        if (fnError.name === 'FunctionsFetchError') {
+          throw new Error('Falha de conexão ao chamar a NutriIA. Atualize a página e tente novamente.');
+        }
         if (errBody?.error === 'auth_missing' || errBody?.error === 'auth_invalid') {
           throw new Error('Erro de autenticação. Faça login novamente.');
         }
