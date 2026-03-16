@@ -107,25 +107,29 @@ export function useNutriChat() {
 
       // 5. Handle response
       if (fnError) {
-        // supabase.functions.invoke wraps non-2xx as FunctionsHttpError
-        // The body is in fnError.context (Response object) or fnData may still contain parsed JSON
-        console.error('[NutriIA] Function invoke error:', {
-          message: fnError.message,
-          name: fnError.name,
-        });
-
-        // Try to extract structured error from fnData (invoke still parses body on error)
+        console.error('[NutriIA] Function invoke error:', fnError.message, fnError.name);
+        
+        // supabase.functions.invoke puts parsed body in fnData even on error
         const errBody = fnData as { error?: string; detail?: string } | null;
-        console.error('[NutriIA] Error body:', errBody);
+        console.error('[NutriIA] Error body:', JSON.stringify(errBody));
 
         if (errBody?.error === 'auth_missing' || errBody?.error === 'auth_invalid') {
           throw new Error('Erro de autenticação. Faça login novamente.');
+        }
+        if (errBody?.error === 'forbidden') {
+          throw new Error(errBody.detail || 'Você precisa de uma assinatura ativa para usar a NutriIA.');
         }
         if (errBody?.error === 'rate_limit') {
           throw new Error(errBody.detail || 'Muitas requisições. Aguarde um momento.');
         }
         if (errBody?.error === 'credits') {
           throw new Error(errBody.detail || 'Créditos de IA esgotados.');
+        }
+        if (errBody?.error === 'config_error') {
+          throw new Error('Serviço de IA não configurado. Contate o administrador.');
+        }
+        if (errBody?.error === 'ai_error') {
+          throw new Error(errBody.detail || 'Erro no serviço de IA. Tente novamente.');
         }
         if (errBody?.error === 'empty_response') {
           throw new Error('A IA não retornou uma resposta. Tente novamente.');
