@@ -14,7 +14,6 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 Deno.serve(async (req) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -50,10 +49,10 @@ Deno.serve(async (req) => {
       return json({ error: "messages array is required" }, 400);
     }
 
-    // ── Gemini API key ───────────────────────────────────
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiKey) {
-      console.error("GEMINI_API_KEY not set");
+    // ── Lovable AI Gateway ───────────────────────────────
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) {
+      console.error("LOVABLE_API_KEY not set");
       return json({ error: "AI service not configured" }, 500);
     }
 
@@ -74,39 +73,38 @@ Nome do aluno: ${user_name || "Aluno"}
 ${programs?.length ? `Programas ativos: ${JSON.stringify(programs)}` : ""}
 ${progress?.length ? `Progresso: ${JSON.stringify(progress)}` : ""}`;
 
-    // ── Call Gemini ──────────────────────────────────────
-    const geminiMessages = messages.map((m: { role: string; content: string }) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
-
-    const geminiBody = {
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: geminiMessages,
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.9,
-        maxOutputTokens: 1024,
-      },
-    };
-
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
-
-    const geminiRes = await fetch(geminiUrl, {
+    // ── Call Lovable AI Gateway ──────────────────────────
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiBody),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        stream: false,
+      }),
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error("Gemini API error:", geminiRes.status, errText);
-      return json({ error: "AI service error", details: errText }, 502);
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
+        return json({ error: "Muitas requisições. Tente novamente em alguns instantes." }, 429);
+      }
+      if (aiResponse.status === 402) {
+        return json({ error: "Créditos insuficientes no serviço de IA." }, 402);
+      }
+      const errText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errText);
+      return json({ error: "AI service error" }, 502);
     }
 
-    const geminiData = await geminiRes.json();
+    const aiData = await aiResponse.json();
     const responseText =
-      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      aiData?.choices?.[0]?.message?.content ||
       "Desculpe, não consegui gerar uma resposta.";
 
     return json({ response: responseText });
