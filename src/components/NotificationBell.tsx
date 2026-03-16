@@ -61,7 +61,7 @@ export default function NotificationBell() {
       .from('notificacoes')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      .order('criado_em', { ascending: false })
       .limit(20);
 
     if (data) {
