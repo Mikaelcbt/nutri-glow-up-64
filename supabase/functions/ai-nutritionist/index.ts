@@ -13,23 +13,6 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
-function extractReply(data: any) {
-  const content = data?.choices?.[0]?.message?.content;
-
-  if (typeof content === "string") {
-    return content.trim();
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => (typeof part?.text === "string" ? part.text : ""))
-      .join("")
-      .trim();
-  }
-
-  return "";
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -43,15 +26,15 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error("Missing Supabase environment variables");
       return json({ error: "config_error", detail: "Backend auth is not configured" }, 500);
     }
 
-    if (!lovableApiKey) {
-      console.error("LOVABLE_API_KEY not set");
+    if (!geminiApiKey) {
+      console.error("GEMINI_API_KEY not set");
       return json({ error: "config_error", detail: "AI service not configured" }, 500);
     }
 
@@ -59,25 +42,20 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error("JWT validation failed:", claimsError?.message ?? claimsError);
+    if (userError || !user) {
+      console.error("Auth failed:", userError?.message);
       return json({ error: "auth_invalid", detail: "Invalid or expired token" }, 401);
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", userId)
       .maybeSingle();
-
-    if (profileError) {
-      console.error("Profile lookup failed:", profileError);
-    }
 
     if (profile?.role !== "admin") {
       const { data: assoc, error: assocError } = await supabase
@@ -89,11 +67,11 @@ Deno.serve(async (req) => {
 
       if (assocError) {
         console.error("Association lookup failed:", assocError);
-        return json({ error: "forbidden", detail: "Não foi possível validar seu acesso à NutriIA." }, 403);
+        return json({ error: "forbidden", detail: "Nao foi possivel validar seu acesso." }, 403);
       }
 
       if (!assoc || assoc.length === 0) {
-        return json({ error: "forbidden", detail: "Você precisa de uma associação ativa para usar a NutriIA." }, 403);
+        return json({ error: "forbidden", detail: "Voce precisa de uma associacao ativa para usar a NutriIA." }, 403);
       }
     }
 
@@ -103,65 +81,78 @@ Deno.serve(async (req) => {
       return json({ error: "bad_request", detail: "messages array is required" }, 400);
     }
 
-    const systemPrompt = `Você é a NutriIA, assistente virtual de nutrição da plataforma Nutri Glow Up.
-Seu papel é ajudar os alunos com dúvidas sobre nutrição, alimentação saudável, receitas e hábitos alimentares.
+    const systemPrompt = `Voce e a NutriIA, assistente virtual de nutricao da plataforma Nutri Glow Up.
+Seu papel e ajudar os alunos com duvidas sobre nutricao, alimentacao saudavel, receitas e habitos alimentares.
 
 Regras:
-- Responda sempre em português do Brasil.
+- Responda sempre em portugues do Brasil.
 - Seja acolhedora, motivadora e profissional.
-- Use linguagem simples e acessível.
-- Use markdown para listas, destaques e organização.
-- NÃO faça diagnósticos médicos nem prescreva medicamentos.
-- Para questões médicas específicas, oriente a buscar um profissional de saúde.
-- Se faltar contexto, faça uma pergunta curta antes de responder.
+- Use linguagem simples e acessivel.
+- Use markdown para listas, destaques e organizacao.
+- NAO faca diagnosticos medicos nem prescreva medicamentos.
+- Para questoes medicas especificas, oriente a buscar um profissional de saude.
+- Se faltar contexto, faca uma pergunta curta antes de responder.
 
 Contexto do aluno:
 - Nome: ${user_name || "Aluno"}
 ${programs?.length ? `- Programas ativos: ${JSON.stringify(programs)}` : ""}
 ${progress?.length ? `- Progresso: ${JSON.stringify(progress)}` : ""}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const geminiContents = [];
+
+    geminiContents.push({
+      role: "user",
+      parts: [{ text: "SYSTEM: " + systemPrompt }],
+    });
+    geminiContents.push({
+      role: "model",
+      parts: [{ text: "Entendido! Estou pronta para ajudar." }],
+    });
+
+    for (const msg of messages) {
+      if (typeof msg?.content !== "string" || !msg.content.trim()) continue;
+      geminiContents.push({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      });
+    }
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+    const response = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        temperature: 0.7,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages
-            .filter((message: any) => typeof message?.content === "string" && message.content.trim())
-            .map((message: any) => ({
-              role: message.role === "assistant" ? "assistant" : "user",
-              content: message.content,
-            })),
-        ],
+        contents: geminiContents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+        },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Gemini API error:", response.status, errorText);
 
       if (response.status === 429) {
-        return json({ error: "rate_limit", detail: "Muitas requisições. Tente novamente em alguns instantes." }, 429);
+        return json({ error: "rate_limit", detail: "Muitas requisicoes. Tente novamente em alguns instantes." }, 429);
       }
 
-      if (response.status === 402) {
-        return json({ error: "credits", detail: "Os créditos de IA do workspace acabaram. Recarregue e tente novamente." }, 402);
-      }
-
-      return json({ error: "ai_error", detail: "O serviço de IA falhou ao gerar a resposta." }, 502);
+      return json({ error: "ai_error", detail: "O servico de IA falhou ao gerar a resposta." }, 502);
     }
 
     const data = await response.json();
-    const reply = extractReply(data);
+
+    const reply =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+        .join("")
+        .trim() || "";
 
     if (!reply) {
-      console.error("Empty AI response:", JSON.stringify(data));
-      return json({ error: "empty_response", detail: "A IA não retornou conteúdo nesta tentativa." }, 502);
+      console.error("Empty Gemini response:", JSON.stringify(data));
+      return json({ error: "empty_response", detail: "A IA nao retornou conteudo nesta tentativa." }, 502);
     }
 
     return json({ reply });
