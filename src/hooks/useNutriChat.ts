@@ -55,6 +55,8 @@ export function useNutriChat() {
     setSending(true);
 
     try {
+      console.log('[NutriIA] Sending message:', text);
+
       // 1. Save user message
       const { data: inserted, error: insertErr } = await supabase
         .from('conversas_ia')
