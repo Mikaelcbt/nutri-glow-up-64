@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     // ── Auth ──────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Missing authorization header" }, 401);
+      return json({ error: "auth_missing", detail: "Missing authorization header" }, 401);
     }
 
     const supabase = createClient(
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
     if (claimsError || !claimsData?.claims) {
       console.error("JWT validation failed:", claimsError);
-      return json({ error: "Unauthorized" }, 401);
+      return json({ error: "auth_invalid", detail: "Invalid or expired token" }, 401);
     }
 
     const userId = claimsData.claims.sub as string;
@@ -46,14 +46,14 @@ Deno.serve(async (req) => {
     const { messages, user_name, programs, progress } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return json({ error: "messages array is required" }, 400);
+      return json({ error: "bad_request", detail: "messages array is required" }, 400);
     }
 
     // ── Lovable AI Gateway ───────────────────────────────
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
       console.error("LOVABLE_API_KEY not set");
-      return json({ error: "AI service not configured" }, 500);
+      return json({ error: "config_error", detail: "AI service not configured" }, 500);
     }
 
     // ── System prompt ────────────────────────────────────
@@ -91,25 +91,29 @@ ${progress?.length ? `Progresso: ${JSON.stringify(progress)}` : ""}`;
     });
 
     if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return json({ error: "Muitas requisições. Tente novamente em alguns instantes." }, 429);
-      }
-      if (aiResponse.status === 402) {
-        return json({ error: "Créditos insuficientes no serviço de IA." }, 402);
-      }
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
-      return json({ error: "AI service error" }, 502);
+
+      if (aiResponse.status === 429) {
+        return json({ error: "rate_limit", detail: "Muitas requisições. Tente novamente em alguns instantes." }, 429);
+      }
+      if (aiResponse.status === 402) {
+        return json({ error: "credits", detail: "Créditos insuficientes no serviço de IA." }, 402);
+      }
+      return json({ error: "ai_error", detail: "Erro no serviço de IA" }, 502);
     }
 
     const aiData = await aiResponse.json();
-    const responseText =
-      aiData?.choices?.[0]?.message?.content ||
-      "Desculpe, não consegui gerar uma resposta.";
+    const replyText =
+      aiData?.choices?.[0]?.message?.content || "";
 
-    return json({ response: responseText });
+    if (!replyText) {
+      return json({ error: "empty_response", detail: "A IA não retornou conteúdo." }, 502);
+    }
+
+    return json({ reply: replyText });
   } catch (err) {
     console.error("Unexpected error:", err);
-    return json({ error: "Internal server error" }, 500);
+    return json({ error: "internal", detail: "Internal server error" }, 500);
   }
 });
