@@ -25,8 +25,15 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const url = event.request.url;
+
+  // Never intercept external requests (Supabase, Google APIs, etc.)
+  if (!url.startsWith(self.location.origin)) return;
+
   // Don't cache OAuth routes
-  if (event.request.url.includes('/~oauth')) return;
+  if (url.includes('/~oauth')) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
