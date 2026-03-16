@@ -1,4 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,52 +7,51 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // 1. Auth check
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "auth_missing", detail: "Missing authorization header" }, 401);
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "auth_missing", detail: "Token ausente" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const geminiApiKey =
-      Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    // 2. Environment
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const geminiKey = Deno.env.get("GOOGLE_GEMINI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error("Missing Supabase environment variables");
-      return json({ error: "config_error", detail: "Backend auth is not configured" }, 500);
+    if (!geminiKey) {
+      console.error("[NutriIA] GOOGLE_GEMINI_API_KEY not found in secrets");
+      return new Response(
+        JSON.stringify({ error: "config_error", detail: "Chave da IA não configurada" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    if (!geminiApiKey) {
-      console.error("Gemini API key not set. Expected GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY");
-      return json({ error: "config_error", detail: "AI service not configured" }, 500);
-    }
-
+    // 3. Validate user
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error("Auth failed:", userError?.message);
-      return json({ error: "auth_invalid", detail: "Invalid or expired token" }, 401);
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) {
+      console.error("[NutriIA] Auth error:", userError?.message);
+      return new Response(
+        JSON.stringify({ error: "auth_invalid", detail: "Token inválido ou expirado" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const userId = user.id;
+    const userId = userData.user.id;
 
+    // 4. Check access (admin or active association)
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -59,71 +59,79 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (profile?.role !== "admin") {
-      const { data: assoc, error: assocError } = await supabase
+      const { data: assoc } = await supabase
         .from("associacoes")
         .select("id")
         .eq("user_id", userId)
         .eq("status", "ativo")
         .limit(1);
 
-      if (assocError) {
-        console.error("Association lookup failed:", assocError);
-        return json({ error: "forbidden", detail: "Nao foi possivel validar seu acesso." }, 403);
-      }
-
       if (!assoc || assoc.length === 0) {
-        return json({ error: "forbidden", detail: "Voce precisa de uma associacao ativa para usar a NutriIA." }, 403);
+        return new Response(
+          JSON.stringify({ error: "forbidden", detail: "Associação ativa necessária" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
     }
 
-    const { messages, user_name, programs, progress } = await req.json();
+    // 5. Parse request body
+    const body = await req.json();
+    const messages = body.messages;
+    const userName = body.user_name || "Aluno";
+    const programs = body.programs || [];
+    const progress = body.progress || [];
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return json({ error: "bad_request", detail: "messages array is required" }, 400);
+      return new Response(
+        JSON.stringify({ error: "bad_request", detail: "messages é obrigatório" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const systemPrompt = `Você é a NutriIA, assistente virtual de nutrição da plataforma Nutri Glow Up.
-Seu papel é ajudar os alunos com dúvidas sobre nutrição, alimentação saudável, receitas e hábitos alimentares.
+    // 6. Build Gemini request
+    const systemPrompt = [
+      "Você é a NutriIA, assistente virtual de nutrição da plataforma Nutri Glow Up.",
+      "Ajude os alunos com dúvidas sobre nutrição, alimentação saudável, receitas e hábitos alimentares.",
+      "",
+      "Regras:",
+      "- Responda sempre em português do Brasil.",
+      "- Seja acolhedora, motivadora e profissional.",
+      "- Use linguagem simples e acessível.",
+      "- Use markdown para listas, destaques e organização.",
+      "- NÃO faça diagnósticos médicos nem prescreva medicamentos.",
+      "- Para questões médicas, oriente a buscar um profissional.",
+      "",
+      `Aluno: ${userName}`,
+      programs.length > 0 ? `Programas ativos: ${JSON.stringify(programs)}` : "",
+      progress.length > 0 ? `Progresso: ${JSON.stringify(progress)}` : "",
+    ].filter(Boolean).join("\n");
 
-Regras:
-- Responda sempre em português do Brasil.
-- Seja acolhedora, motivadora e profissional.
-- Use linguagem simples e acessível.
-- Use markdown para listas, destaques e organização.
-- NÃO faça diagnósticos médicos nem prescreva medicamentos.
-- Para questões médicas específicas, oriente a buscar um profissional de saúde.
-- Se faltar contexto, faça uma pergunta curta antes de responder.
-
-Contexto do aluno:
-- Nome: ${user_name || "Aluno"}
-${programs?.length ? `- Programas ativos: ${JSON.stringify(programs)}` : ""}
-${progress?.length ? `- Progresso: ${JSON.stringify(progress)}` : ""}`;
-
-    const geminiContents = messages
-      .filter((msg: unknown) => {
-        if (!msg || typeof msg !== "object") return false;
-        const content = (msg as { content?: unknown }).content;
-        return typeof content === "string" && content.trim().length > 0;
-      })
-      .map((msg: { role?: string; content: string }) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
+    const contents = messages
+      .filter((m: any) => m && typeof m.content === "string" && m.content.trim())
+      .map((m: any) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
       }));
 
-    if (geminiContents.length === 0) {
-      return json({ error: "bad_request", detail: "No valid messages provided" }, 400);
+    if (contents.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "bad_request", detail: "Nenhuma mensagem válida" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+    console.log("[NutriIA] Calling Gemini API with", contents.length, "messages");
 
-    const response = await fetch(geminiUrl, {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+
+    const geminiResponse = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: {
+        system_instruction: {
           parts: [{ text: systemPrompt }],
         },
-        contents: geminiContents,
+        contents: contents,
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 2048,
@@ -131,37 +139,65 @@ ${progress?.length ? `- Progresso: ${JSON.stringify(progress)}` : ""}`;
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Gemini API error:", response.status, errorText);
+    console.log("[NutriIA] Gemini status:", geminiResponse.status);
 
-      if (response.status === 429) {
-        return json({ error: "rate_limit", detail: "Muitas requisicoes. Tente novamente em alguns instantes." }, 429);
+    if (!geminiResponse.ok) {
+      const errText = await geminiResponse.text();
+      console.error("[NutriIA] Gemini error:", geminiResponse.status, errText);
+
+      if (geminiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "rate_limit", detail: "Muitas requisições, tente em instantes" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
 
-      return json({ error: "ai_error", detail: "O servico de IA falhou ao gerar a resposta." }, 502);
+      return new Response(
+        JSON.stringify({ error: "ai_error", detail: "Falha ao gerar resposta da IA" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const data = await response.json();
+    const geminiData = await geminiResponse.json();
+    console.log("[NutriIA] Gemini response received, candidates:", geminiData?.candidates?.length);
 
-    const reply = Array.isArray(data?.candidates)
-      ? data.candidates
-          .flatMap((candidate: { content?: { parts?: Array<{ text?: string }> } }) =>
-            Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [],
-          )
-          .map((part: { text?: string }) => (typeof part?.text === "string" ? part.text : ""))
-          .join("")
-          .trim()
-      : "";
+    // 7. Extract text from Gemini response
+    let reply = "";
+    try {
+      const candidates = geminiData?.candidates;
+      if (Array.isArray(candidates) && candidates.length > 0) {
+        const parts = candidates[0]?.content?.parts;
+        if (Array.isArray(parts)) {
+          reply = parts
+            .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+            .join("")
+            .trim();
+        }
+      }
+    } catch (parseErr) {
+      console.error("[NutriIA] Error parsing Gemini response:", parseErr);
+    }
 
     if (!reply) {
-      console.error("Empty Gemini response:", JSON.stringify(data));
-      return json({ error: "empty_response", detail: "A IA nao retornou conteudo nesta tentativa." }, 502);
+      console.error("[NutriIA] Empty reply. Full response:", JSON.stringify(geminiData));
+      return new Response(
+        JSON.stringify({ error: "empty_response", detail: "A IA não retornou conteúdo" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    return json({ reply });
-  } catch (error) {
-    console.error("Unexpected error:", error);
-    return json({ error: "internal", detail: error instanceof Error ? error.message : "Internal server error" }, 500);
+    console.log("[NutriIA] Success, reply length:", reply.length);
+
+    // 8. Return
+    return new Response(
+      JSON.stringify({ reply }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    console.error("[NutriIA] Unexpected error:", err);
+    return new Response(
+      JSON.stringify({ error: "internal", detail: String(err) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
