@@ -14,7 +14,7 @@ interface Notificacao {
   mensagem: string;
   link: string | null;
   lida: boolean;
-  created_at: string;
+  criado_em: string;
 }
 
 export default function NotificationBell() {
