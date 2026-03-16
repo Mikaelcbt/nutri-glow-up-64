@@ -26,7 +26,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    const geminiApiKey =
+      Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_GEMINI_API_KEY");
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error("Missing Supabase environment variables");
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
     }
 
     if (!geminiApiKey) {
-      console.error("GEMINI_API_KEY not set");
+      console.error("Gemini API key not set. Expected GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY");
       return json({ error: "config_error", detail: "AI service not configured" }, 500);
     }
 
