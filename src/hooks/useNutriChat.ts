@@ -94,9 +94,9 @@ export function useNutriChat() {
       const recentMessages = messages.slice(-10).map(m => ({ role: m.role, content: m.conteudo }));
       recentMessages.push({ role: 'user', content: text });
 
-      // 4. Call edge function
-      console.log('[NutriIA] Calling edge function...');
-      const { data: aiData, error: fnError } = await supabase.functions.invoke('ai-nutritionist', {
+      // 4. Call edge function via supabase.functions.invoke
+      console.log('[NutriIA] Invoking ai-nutritionist...');
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-nutritionist', {
         body: {
           messages: recentMessages,
           user_name: profile.nome_completo || 'Aluno',
@@ -105,19 +105,48 @@ export function useNutriChat() {
         },
       });
 
+      // 5. Handle response
       if (fnError) {
-        console.error('[NutriIA] Edge function error:', fnError);
-        throw fnError;
+        // supabase.functions.invoke wraps non-2xx as FunctionsHttpError
+        // The body is in fnError.context (Response object) or fnData may still contain parsed JSON
+        console.error('[NutriIA] Function invoke error:', {
+          message: fnError.message,
+          name: fnError.name,
+        });
+
+        // Try to extract structured error from fnData (invoke still parses body on error)
+        const errBody = fnData as { error?: string; detail?: string } | null;
+        console.error('[NutriIA] Error body:', errBody);
+
+        if (errBody?.error === 'auth_missing' || errBody?.error === 'auth_invalid') {
+          throw new Error('Erro de autenticação. Faça login novamente.');
+        }
+        if (errBody?.error === 'rate_limit') {
+          throw new Error(errBody.detail || 'Muitas requisições. Aguarde um momento.');
+        }
+        if (errBody?.error === 'credits') {
+          throw new Error(errBody.detail || 'Créditos de IA esgotados.');
+        }
+        if (errBody?.error === 'empty_response') {
+          throw new Error('A IA não retornou uma resposta. Tente novamente.');
+        }
+
+        throw new Error(errBody?.detail || fnError.message || 'Erro ao consultar a NutriIA.');
       }
 
-      console.log('[NutriIA] Edge function response:', aiData);
+      console.log('[NutriIA] Response data:', fnData);
 
-      const responseText = aiData?.response || aiData?.message || 'Desculpe, não consegui processar sua pergunta.';
+      // Extract reply from standardized response
+      const reply = (fnData as { reply?: string })?.reply;
+      if (!reply) {
+        console.error('[NutriIA] Missing reply field in response:', fnData);
+        throw new Error('Resposta inesperada da IA. Tente novamente.');
+      }
 
-      // 5. Save AI response
+      // 6. Save AI response
       const { data: aiInserted, error: aiInsertErr } = await supabase
         .from('conversas_ia')
-        .insert({ user_id: user.id, role: 'assistant', conteudo: responseText })
+        .insert({ user_id: user.id, role: 'assistant', conteudo: reply })
         .select()
         .single();
 
@@ -125,12 +154,12 @@ export function useNutriChat() {
       if (aiInserted) {
         setMessages(prev => [...prev, aiInserted as ChatMessage]);
       }
-    } catch (err) {
-      console.error('[NutriIA] Error:', err);
+    } catch (err: any) {
+      console.error('[NutriIA] Final error:', err?.message || err);
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        conteudo: 'Desculpe, estou com dificuldades técnicas. Tente novamente em instantes.',
+        conteudo: err?.message || 'Erro desconhecido ao processar sua mensagem.',
         criado_em: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
