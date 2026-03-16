@@ -55,6 +55,8 @@ export function useNutriChat() {
     setSending(true);
 
     try {
+      console.log('[NutriIA] Sending message:', text);
+
       // 1. Save user message
       const { data: inserted, error: insertErr } = await supabase
         .from('conversas_ia')
@@ -146,7 +148,10 @@ export function useNutriChat() {
           throw new Error(errBody.detail || 'Erro no serviço de IA. Tente novamente.');
         }
         if (errBody?.error === 'empty_response') {
-          throw new Error('A IA não retornou uma resposta. Tente novamente.');
+          throw new Error(errBody.detail || 'A IA não retornou uma resposta. Tente novamente.');
+        }
+        if (errBody?.error === 'internal') {
+          throw new Error(errBody.detail || 'Erro interno ao consultar a NutriIA.');
         }
 
         throw new Error(errBody?.detail || fnError.message || 'Erro ao consultar a NutriIA.');
