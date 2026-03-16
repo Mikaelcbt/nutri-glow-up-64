@@ -92,7 +92,7 @@ ${progress?.length ? `Progresso: ${JSON.stringify(progress)}` : ""}`;
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
+      console.error("AI gateway error status:", aiResponse.status, "body:", errText);
 
       if (aiResponse.status === 429) {
         return json({ error: "rate_limit", detail: "Muitas requisições. Tente novamente em alguns instantes." }, 429);
@@ -100,7 +100,7 @@ ${progress?.length ? `Progresso: ${JSON.stringify(progress)}` : ""}`;
       if (aiResponse.status === 402) {
         return json({ error: "credits", detail: "Créditos insuficientes no serviço de IA." }, 402);
       }
-      return json({ error: "ai_error", detail: "Erro no serviço de IA" }, 502);
+      return json({ error: "ai_error", detail: `Gateway returned ${aiResponse.status}` }, 502);
     }
 
     const aiData = await aiResponse.json();
