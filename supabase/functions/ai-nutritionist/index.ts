@@ -1,3 +1,4 @@
+// NutriIA Edge Function v2 - stable
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -31,16 +32,14 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } =
-      await supabase.auth.getClaims(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (claimsError || !claimsData?.claims) {
-      console.error("JWT validation failed:", claimsError);
+    if (userError || !user) {
+      console.error("Auth failed:", userError?.message);
       return json({ error: "auth_invalid", detail: "Invalid or expired token" }, 401);
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     // ── Body ─────────────────────────────────────────────
     const { messages, user_name, programs, progress } = await req.json();
