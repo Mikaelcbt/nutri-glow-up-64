@@ -151,7 +151,7 @@ export default function NotificationBell() {
                         <p className="text-sm font-medium text-foreground">{n.titulo}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{n.mensagem}</p>
                         <p className="text-[10px] text-muted-foreground/60 mt-1">
-                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ptBR })}
+                          {formatDistanceToNow(new Date(n.criado_em), { addSuffix: true, locale: ptBR })}
                         </p>
                       </div>
                     )}
