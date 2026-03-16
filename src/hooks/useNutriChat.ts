@@ -93,7 +93,10 @@ export function useNutriChat() {
       }
 
       // 3. Build messages for the AI
-      const recentMessages = messages.slice(-10).map(m => ({ role: m.role, content: m.conteudo }));
+      const recentMessages = messages
+        .slice(-10)
+        .filter(m => m.conteudo?.trim() && m.conteudo !== 'Não consegui gerar resposta.')
+        .map(m => ({ role: m.role, content: m.conteudo }));
       recentMessages.push({ role: 'user', content: text });
 
       // 4. Call edge function via supabase.functions.invoke

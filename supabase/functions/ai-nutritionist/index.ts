@@ -144,11 +144,15 @@ ${progress?.length ? `- Progresso: ${JSON.stringify(progress)}` : ""}`;
 
     const data = await response.json();
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p: any) => (typeof p?.text === "string" ? p.text : ""))
-        .join("")
-        .trim() || "";
+    const reply = Array.isArray(data?.candidates)
+      ? data.candidates
+          .flatMap((candidate: { content?: { parts?: Array<{ text?: string }> } }) =>
+            Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [],
+          )
+          .map((part: { text?: string }) => (typeof part?.text === "string" ? part.text : ""))
+          .join("")
+          .trim()
+      : "";
 
     if (!reply) {
       console.error("Empty Gemini response:", JSON.stringify(data));
