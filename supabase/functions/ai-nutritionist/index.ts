@@ -26,7 +26,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    const geminiApiKey =
+      Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_GEMINI_API_KEY");
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error("Missing Supabase environment variables");
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
     }
 
     if (!geminiApiKey) {
-      console.error("GEMINI_API_KEY not set");
+      console.error("Gemini API key not set. Expected GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY");
       return json({ error: "config_error", detail: "AI service not configured" }, 500);
     }
 
@@ -81,40 +82,36 @@ Deno.serve(async (req) => {
       return json({ error: "bad_request", detail: "messages array is required" }, 400);
     }
 
-    const systemPrompt = `Voce e a NutriIA, assistente virtual de nutricao da plataforma Nutri Glow Up.
-Seu papel e ajudar os alunos com duvidas sobre nutricao, alimentacao saudavel, receitas e habitos alimentares.
+    const systemPrompt = `Você é a NutriIA, assistente virtual de nutrição da plataforma Nutri Glow Up.
+Seu papel é ajudar os alunos com dúvidas sobre nutrição, alimentação saudável, receitas e hábitos alimentares.
 
 Regras:
-- Responda sempre em portugues do Brasil.
+- Responda sempre em português do Brasil.
 - Seja acolhedora, motivadora e profissional.
-- Use linguagem simples e acessivel.
-- Use markdown para listas, destaques e organizacao.
-- NAO faca diagnosticos medicos nem prescreva medicamentos.
-- Para questoes medicas especificas, oriente a buscar um profissional de saude.
-- Se faltar contexto, faca uma pergunta curta antes de responder.
+- Use linguagem simples e acessível.
+- Use markdown para listas, destaques e organização.
+- NÃO faça diagnósticos médicos nem prescreva medicamentos.
+- Para questões médicas específicas, oriente a buscar um profissional de saúde.
+- Se faltar contexto, faça uma pergunta curta antes de responder.
 
 Contexto do aluno:
 - Nome: ${user_name || "Aluno"}
 ${programs?.length ? `- Programas ativos: ${JSON.stringify(programs)}` : ""}
 ${progress?.length ? `- Progresso: ${JSON.stringify(progress)}` : ""}`;
 
-    const geminiContents = [];
-
-    geminiContents.push({
-      role: "user",
-      parts: [{ text: "SYSTEM: " + systemPrompt }],
-    });
-    geminiContents.push({
-      role: "model",
-      parts: [{ text: "Entendido! Estou pronta para ajudar." }],
-    });
-
-    for (const msg of messages) {
-      if (typeof msg?.content !== "string" || !msg.content.trim()) continue;
-      geminiContents.push({
+    const geminiContents = messages
+      .filter((msg: unknown) => {
+        if (!msg || typeof msg !== "object") return false;
+        const content = (msg as { content?: unknown }).content;
+        return typeof content === "string" && content.trim().length > 0;
+      })
+      .map((msg: { role?: string; content: string }) => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
-      });
+      }));
+
+    if (geminiContents.length === 0) {
+      return json({ error: "bad_request", detail: "No valid messages provided" }, 400);
     }
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
@@ -123,6 +120,9 @@ ${progress?.length ? `- Progresso: ${JSON.stringify(progress)}` : ""}`;
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemPrompt }],
+        },
         contents: geminiContents,
         generationConfig: {
           temperature: 0.7,
@@ -144,11 +144,15 @@ ${progress?.length ? `- Progresso: ${JSON.stringify(progress)}` : ""}`;
 
     const data = await response.json();
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p: any) => (typeof p?.text === "string" ? p.text : ""))
-        .join("")
-        .trim() || "";
+    const reply = Array.isArray(data?.candidates)
+      ? data.candidates
+          .flatMap((candidate: { content?: { parts?: Array<{ text?: string }> } }) =>
+            Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [],
+          )
+          .map((part: { text?: string }) => (typeof part?.text === "string" ? part.text : ""))
+          .join("")
+          .trim()
+      : "";
 
     if (!reply) {
       console.error("Empty Gemini response:", JSON.stringify(data));
