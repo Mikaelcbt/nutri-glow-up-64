@@ -22,11 +22,11 @@ export default function RichEditor({ label, emoji, content, onChange, placeholde
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
-      }),
-      Underline,
+      }) as any,
+      Underline as any,
     ],
     content: content || '',
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: any) => {
       onChange(editor.getHTML());
     },
     editorProps: {
@@ -34,7 +34,7 @@ export default function RichEditor({ label, emoji, content, onChange, placeholde
         class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none text-sm [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold',
       },
     },
-  });
+  } as any);
 
   // Sync external content changes
   useEffect(() => {
@@ -86,14 +86,14 @@ export default function RichEditor({ label, emoji, content, onChange, placeholde
       {/* Toolbar */}
       <div className="flex flex-wrap gap-0.5 p-1 rounded-t-lg border border-border border-b-0 bg-muted/30">
         {[
-          { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive('bold') },
-          { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive('italic') },
-          { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive('underline') },
-          { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive('heading', { level: 2 }) },
-          { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: editor.isActive('heading', { level: 3 }) },
-          { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive('bulletList') },
-          { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive('orderedList') },
-          { icon: Minus, action: () => editor.chain().focus().setHorizontalRule().run(), active: false },
+          { icon: Bold, action: () => (editor.chain().focus() as any).toggleBold().run(), active: editor.isActive('bold') },
+          { icon: Italic, action: () => (editor.chain().focus() as any).toggleItalic().run(), active: editor.isActive('italic') },
+          { icon: UnderlineIcon, action: () => (editor.chain().focus() as any).toggleUnderline().run(), active: editor.isActive('underline') },
+          { icon: Heading2, action: () => (editor.chain().focus() as any).toggleHeading({ level: 2 }).run(), active: editor.isActive('heading', { level: 2 }) },
+          { icon: Heading3, action: () => (editor.chain().focus() as any).toggleHeading({ level: 3 }).run(), active: editor.isActive('heading', { level: 3 }) },
+          { icon: List, action: () => (editor.chain().focus() as any).toggleBulletList().run(), active: editor.isActive('bulletList') },
+          { icon: ListOrdered, action: () => (editor.chain().focus() as any).toggleOrderedList().run(), active: editor.isActive('orderedList') },
+          { icon: Minus, action: () => (editor.chain().focus() as any).setHorizontalRule().run(), active: false },
         ].map(({ icon: Icon, action, active }, i) => (
           <button
             key={i}
