@@ -42,6 +42,26 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub as string;
 
+    // ── Subscription / role check ────────────────────────
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (prof?.role !== 'admin') {
+      const { data: assoc } = await supabase
+        .from('associacoes')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'ativo')
+        .limit(1);
+
+      if (!assoc || assoc.length === 0) {
+        return json({ error: 'forbidden', detail: 'Active subscription required.' }, 403);
+      }
+    }
+
     // ── Body ─────────────────────────────────────────────
     const { messages, user_name, programs, progress } = await req.json();
 
