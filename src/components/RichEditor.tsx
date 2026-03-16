@@ -22,11 +22,11 @@ export default function RichEditor({ label, emoji, content, onChange, placeholde
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
-      }),
-      Underline,
+      }) as any,
+      Underline as any,
     ],
     content: content || '',
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: any) => {
       onChange(editor.getHTML());
     },
     editorProps: {
@@ -34,7 +34,7 @@ export default function RichEditor({ label, emoji, content, onChange, placeholde
         class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none text-sm [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold',
       },
     },
-  });
+  } as any);
 
   // Sync external content changes
   useEffect(() => {
