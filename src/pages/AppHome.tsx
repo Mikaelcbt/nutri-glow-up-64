@@ -54,6 +54,7 @@ export default function AppHome() {
   const [loading, setLoading] = useState(true);
   const [requestModal, setRequestModal] = useState<string | null>(null);
   const myProgsRef = useRef<HTMLDivElement>(null);
+  const exploreRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const isAdmin = profile?.role === 'admin';
 
