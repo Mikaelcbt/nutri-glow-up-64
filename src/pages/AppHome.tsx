@@ -188,10 +188,10 @@ export default function AppHome() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="px-8 py-8 md:px-16 space-y-6">
-          <Skeleton className="h-[60vh] w-full rounded-2xl shimmer" />
-          <div className="flex gap-5">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-80 w-52 rounded-2xl flex-shrink-0 shimmer" />)}
+        <div className="px-4 py-6 md:px-16 space-y-6">
+          <Skeleton className="h-[50vh] md:h-[60vh] w-full rounded-2xl shimmer" />
+          <div className="flex gap-4 overflow-hidden">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-56 md:h-80 w-40 md:w-52 rounded-2xl flex-shrink-0 shimmer" />)}
           </div>
         </div>
       </AppLayout>
