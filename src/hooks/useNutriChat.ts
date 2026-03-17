@@ -136,8 +136,11 @@ export function useNutriChat() {
         throw new Error('Sessão expirada. Faça login novamente.');
       }
 
-      // 4. Call edge function via direct fetch (bypasses any SDK caching)
-      console.log('[NutriIA] Calling edge function via fetch...');
+      // 4. Load platform context (cached after first load)
+      const ctx = await loadPlatformContext();
+
+      // 5. Call edge function via direct fetch
+      console.log('[NutriIA] Calling edge function with platform context...');
       const response = await fetch(FUNCTION_URL, {
         method: 'POST',
         headers: {
@@ -147,6 +150,9 @@ export function useNutriChat() {
         body: JSON.stringify({
           messages: recentMessages,
           user_name: profile.nome_completo || 'Aluno',
+          programs: ctx?.programs || [],
+          progress: ctx?.progress || [],
+          challenges: ctx?.challenges || [],
         }),
       });
 
