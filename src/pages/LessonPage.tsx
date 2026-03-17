@@ -6,12 +6,15 @@ import AppLayout from '@/components/AppLayout';
 import AccessRequestModal from '@/components/AccessRequestModal';
 import Breadcrumb from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Play, Trophy, PartyPopper, Lock } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Play, Trophy, PartyPopper, Lock, List } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LessonData {
   id: string; titulo: string; descricao: string; conteudo: string;
@@ -23,14 +26,18 @@ export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [completed, setCompleted] = useState(false);
   const [marking, setMarking] = useState(false);
   const [siblings, setSiblings] = useState<{ prev: string | null; next: string | null }>({ prev: null, next: null });
   const [moduleLessons, setModuleLessons] = useState<SiblingLesson[]>([]);
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [moduleName, setModuleName] = useState('');
+  const [moduleId, setModuleId] = useState('');
   const [productSlug, setProductSlug] = useState('');
   const [productName, setProductName] = useState('');
+  const [nextModuleId, setNextModuleId] = useState<string | null>(null);
   const [showModuleComplete, setShowModuleComplete] = useState(false);
   const [showProgramComplete, setShowProgramComplete] = useState(false);
   const [autoAdvanceTimer, setAutoAdvanceTimer] = useState<number | null>(null);
@@ -39,6 +46,7 @@ export default function LessonPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => { if (id) loadLesson(); }, [id, user]);
@@ -54,18 +62,20 @@ export default function LessonPage() {
       if (!data) return;
       setLesson(data);
 
-      const { data: mod } = await supabase.from('modules').select('id, titulo, product_id').eq('id', data.module_id).maybeSingle();
+      const { data: mod } = await supabase.from('modules').select('id, titulo, product_id, ordem').eq('id', data.module_id).maybeSingle();
       if (mod) {
         setModuleName(mod.titulo);
+        setModuleId(mod.id);
         const { data: prod } = await supabase.from('products').select('slug, nome').eq('id', mod.product_id).maybeSingle();
         if (prod) { setProductSlug(prod.slug); setProductName(prod.nome); }
 
-        // Check access
-        if (isAdmin || data.is_preview) {
-          setHasAccess(true);
-        } else if (user) {
-          const { data: assoc } = await supabase
-            .from('associacoes').select('id').eq('user_id', user.id).eq('product_id', mod.product_id).eq('status', 'ativo').limit(1);
+        // Next module
+        const { data: nextMod } = await supabase.from('modules').select('id').eq('product_id', mod.product_id).gt('ordem', mod.ordem).order('ordem').limit(1);
+        setNextModuleId(nextMod?.[0]?.id || null);
+
+        if (isAdmin || data.is_preview) { setHasAccess(true); }
+        else if (user) {
+          const { data: assoc } = await supabase.from('associacoes').select('id').eq('user_id', user.id).eq('product_id', mod.product_id).eq('status', 'ativo').limit(1);
           setHasAccess((assoc?.length ?? 0) > 0);
         }
         setAccessChecked(true);
@@ -90,6 +100,13 @@ export default function LessonPage() {
         const idx = allLessons.findIndex(l => l.id === data.id);
         setSiblings({ prev: idx > 0 ? allLessons[idx - 1].id : null, next: idx < allLessons.length - 1 ? allLessons[idx + 1].id : null });
       }
+
+      // Fetch completed lessons for sidebar
+      if (user && allLessons?.length) {
+        const ids = allLessons.map(l => l.id);
+        const { data: prog } = await supabase.from('rastreamento_progresso').select('lesson_id').eq('user_id', user.id).eq('concluido', true).in('lesson_id', ids);
+        setCompletedLessons(new Set(prog?.map(p => p.lesson_id as string) || []));
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -103,6 +120,7 @@ export default function LessonPage() {
       );
       if (error) { toast.error('Erro ao salvar progresso: ' + error.message); return; }
       setCompleted(true); setShowCheckAnim(true);
+      setCompletedLessons(prev => new Set(prev).add(lesson.id));
       setTimeout(() => setShowCheckAnim(false), 2000);
       toast.success('Aula concluída! 🎉');
 
@@ -140,11 +158,13 @@ export default function LessonPage() {
   };
   const isDirectVideo = (url: string) => /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
 
+  const completedCountInModule = moduleLessons.filter(l => completedLessons.has(l.id)).length;
+  const moduleProgressPct = moduleLessons.length > 0 ? (completedCountInModule / moduleLessons.length) * 100 : 0;
+
   if (!lesson) {
     return <AppLayout><div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div></AppLayout>;
   }
 
-  // Blocked screen
   if (accessChecked && !hasAccess) {
     return (
       <AppLayout>
@@ -170,91 +190,165 @@ export default function LessonPage() {
     );
   }
 
+  // Sidebar content (shared between desktop aside and mobile accordion)
+  const lessonSidebarList = (
+    <div className="space-y-1">
+      {moduleLessons.map((l, i) => {
+        const isCompleted = completedLessons.has(l.id);
+        const isCurrent = l.id === lesson.id;
+        return (
+          <Link
+            key={l.id}
+            to={`/app/aula/${l.id}`}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${isCurrent ? 'bg-accent text-accent-foreground font-medium border border-primary/20' : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'}`}
+          >
+            <div className={`relative flex h-[48px] w-[64px] flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold ${isCompleted ? 'bg-primary/20' : 'bg-muted'}`}>
+              {isCompleted ? <CheckCircle className="h-4 w-4 text-primary" /> : <span>{i + 1}</span>}
+            </div>
+            <span className="truncate flex-1">{l.titulo}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+
   return (
     <AppLayout>
       <AnimatedPage>
         <Breadcrumb items={[
           { label: 'Início', href: '/app' },
-          ...(productSlug ? [{ label: 'Programa', href: `/app/programa/${productSlug}` }] : []),
-          ...(moduleName ? [{ label: moduleName }] : []),
+          ...(productSlug ? [{ label: productName || 'Programa', href: `/app/programa/${productSlug}` }] : []),
+          ...(moduleName ? [{ label: moduleName, href: `/app/modulo/${moduleId}` }] : []),
           { label: lesson.titulo },
         ]} />
 
         <div className="flex flex-col lg:flex-row">
-          <motion.div className="flex-1 max-w-4xl mx-auto px-4 py-6 lg:px-8 lg:py-8 pb-28 md:pb-8" variants={staggerContainer} initial="initial" animate="animate">
+          {/* === MAIN COLUMN === */}
+          <motion.div className="flex-1 px-4 py-6 lg:px-8 lg:py-8 pb-28 md:pb-8" variants={staggerContainer} initial="initial" animate="animate">
+            {/* Video Player */}
             {lesson.video_url && (
-              <motion.div variants={fadeInUp} className="aspect-video w-full overflow-hidden rounded-xl md:rounded-2xl bg-card mb-6 md:mb-8 shadow-soft border border-border">
-                {isDirectVideo(lesson.video_url) ? (
-                  <video src={lesson.video_url} controls className="h-full w-full" />
-                ) : (
-                  <iframe src={getEmbedUrl(lesson.video_url)} className="h-full w-full" allowFullScreen allow="autoplay; fullscreen; picture-in-picture" />
-                )}
+              <motion.div variants={fadeInUp} className="relative w-full overflow-hidden rounded-xl md:rounded-2xl bg-card mb-6 shadow-soft border border-border">
+                {/* Progress bar on top */}
+                <Progress value={moduleProgressPct} className="h-1 rounded-none" />
+                <div className="aspect-video">
+                  {isDirectVideo(lesson.video_url) ? (
+                    <video src={lesson.video_url} controls className="h-full w-full" />
+                  ) : (
+                    <iframe src={getEmbedUrl(lesson.video_url)} className="h-full w-full" allowFullScreen allow="autoplay; fullscreen; picture-in-picture" />
+                  )}
+                </div>
               </motion.div>
             )}
 
-            <motion.div variants={fadeInUp} className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6 md:mb-8">
-              <div>
-                <h1 className="font-display text-2xl md:text-4xl font-semibold text-foreground">{lesson.titulo}</h1>
-                <p className="mt-2 text-sm md:text-base text-muted-foreground">{lesson.descricao}</p>
-              </div>
-              {/* Desktop mark complete button */}
-              <div className="hidden md:flex flex-col items-end gap-2 relative">
-                <Button onClick={markComplete} disabled={completed || marking} variant={completed ? 'outline' : 'default'}
-                  className={`flex-shrink-0 active:scale-[0.97] transition-transform ${completed ? 'border-primary text-primary' : ''}`}
+            {/* Navigation buttons row */}
+            <motion.div variants={fadeInUp} className="hidden md:flex items-center gap-3 mb-6">
+              {siblings.prev ? (
+                <Button asChild variant="secondary" className="active:scale-[0.97] transition-transform">
+                  <Link to={`/app/aula/${siblings.prev}`}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Link>
+                </Button>
+              ) : <div />}
+
+              <div className="relative">
+                <Button onClick={markComplete} disabled={completed || marking}
+                  className={`active:scale-[0.97] transition-transform ${completed ? 'bg-primary text-primary-foreground' : 'btn-ripple bg-gradient-to-r from-primary to-[hsl(142_72%_37%)]'}`}
                 >
-                  {marking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><CheckCircle className="mr-2 h-4 w-4" /> {completed ? 'Concluída ✓' : 'Marcar como concluída'}</>}
+                  {marking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : <><CheckCircle className="mr-2 h-4 w-4" /> {completed ? 'Concluída ✓' : 'Marcar concluída'}</>}
                 </Button>
                 <AnimatePresence>
                   {showCheckAnim && (
-                    <motion.div className="absolute -top-8 right-0" initial={{ opacity: 0, scale: 0.5, y: 10 }} animate={{ opacity: 1, scale: 1.2, y: -20 }} exit={{ opacity: 0, scale: 0, y: -40 }} transition={{ duration: 0.6 }}>
+                    <motion.div className="absolute -top-8 left-1/2 -translate-x-1/2" initial={{ opacity: 0, scale: 0.5, y: 10 }} animate={{ opacity: 1, scale: 1.2, y: -20 }} exit={{ opacity: 0, scale: 0, y: -40 }} transition={{ duration: 0.6 }}>
                       <CheckCircle className="h-8 w-8 text-primary" />
                     </motion.div>
                   )}
                 </AnimatePresence>
-                {autoAdvanceTimer && countdown > 0 && siblings.next && (
-                  <motion.span className="text-xs text-muted-foreground" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    Próxima aula em {countdown}s...{' '}
-                    <button onClick={() => { if (autoAdvanceTimer) clearInterval(autoAdvanceTimer); setAutoAdvanceTimer(null); }} className="text-primary underline">cancelar</button>
-                  </motion.span>
-                )}
               </div>
+
+              {siblings.next ? (
+                <Button asChild variant="secondary" className="active:scale-[0.97] transition-transform">
+                  <Link to={`/app/aula/${siblings.next}`}>Próxima <ChevronRight className="ml-1 h-4 w-4" /></Link>
+                </Button>
+              ) : <div />}
+
+              {autoAdvanceTimer && countdown > 0 && siblings.next && (
+                <motion.span className="text-xs text-muted-foreground ml-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  Próxima em {countdown}s...{' '}
+                  <button onClick={() => { if (autoAdvanceTimer) clearInterval(autoAdvanceTimer); setAutoAdvanceTimer(null); }} className="text-primary underline">cancelar</button>
+                </motion.span>
+              )}
             </motion.div>
 
+            {/* Title */}
+            <motion.h1 variants={fadeInUp} className="font-display text-2xl md:text-4xl font-semibold text-foreground mb-2">{lesson.titulo}</motion.h1>
+            {lesson.descricao && <motion.p variants={fadeInUp} className="text-muted-foreground mb-6">{lesson.descricao}</motion.p>}
+
+            {/* Markdown content */}
             {lesson.conteudo && (
-              <motion.div variants={fadeInUp} className="prose max-w-none mb-8 md:mb-12 prose-headings:font-display prose-a:text-primary prose-headings:text-foreground text-foreground text-sm md:text-base">
+              <motion.div variants={fadeInUp} className="prose max-w-none mb-8 prose-headings:font-display prose-a:text-primary prose-headings:text-foreground text-foreground text-sm md:text-base">
                 <ReactMarkdown>{lesson.conteudo}</ReactMarkdown>
               </motion.div>
             )}
 
-            {/* Desktop navigation */}
-            <motion.div variants={fadeInUp} className="hidden md:flex items-center justify-between border-t border-border pt-6">
-              {siblings.prev ? <Button asChild variant="outline" className="active:scale-[0.97]"><Link to={`/app/aula/${siblings.prev}`}><ChevronLeft className="mr-2 h-4 w-4" /> Aula anterior</Link></Button> : <div />}
-              {siblings.next ? <Button asChild className="active:scale-[0.97]"><Link to={`/app/aula/${siblings.next}`}>Próxima aula <ChevronRight className="ml-2 h-4 w-4" /></Link></Button> : <div />}
-            </motion.div>
+            {/* Mobile: Accordion lesson list */}
+            {isMobile && (
+              <Collapsible open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full mb-4 justify-between">
+                    <span className="flex items-center gap-2"><List className="h-4 w-4" /> Aulas do módulo ({completedCountInModule}/{moduleLessons.length})</span>
+                    <ChevronRight className={`h-4 w-4 transition-transform ${sidebarOpen ? 'rotate-90' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mb-6">
+                  {lessonSidebarList}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </motion.div>
 
-          <aside className="w-80 border-l border-border bg-card p-4 hidden lg:block">
-            <h3 className="font-display text-lg font-semibold text-foreground mb-4">Aulas do módulo</h3>
-            <div className="space-y-1">
-              {moduleLessons.map((l, i) => (
-                <motion.div key={l.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
-                  <Link to={`/app/aula/${l.id}`}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${l.id === lesson.id ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-                  >
-                    <Play className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{l.titulo}</span>
-                  </Link>
-                </motion.div>
-              ))}
+          {/* === RIGHT SIDEBAR (desktop only) === */}
+          <aside className="w-[320px] border-l border-border bg-secondary/30 hidden lg:flex lg:flex-col lg:min-h-[calc(100vh-64px)]">
+            <div className="p-4 border-b border-border">
+              <h3 className="font-display text-base font-semibold text-foreground truncate">{moduleName}</h3>
+              <span className="text-xs text-muted-foreground">{moduleLessons.length} aulas • {completedCountInModule} concluídas</span>
             </div>
+
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {moduleLessons.map((l, i) => {
+                const isCompleted = completedLessons.has(l.id);
+                const isCurrent = l.id === lesson.id;
+                return (
+                  <motion.div key={l.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
+                    <Link
+                      to={`/app/aula/${l.id}`}
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${isCurrent ? 'bg-accent text-accent-foreground font-medium border border-primary/20' : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'}`}
+                    >
+                      <div className={`relative flex h-[44px] w-[58px] flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold ${isCompleted ? 'bg-primary/20' : 'bg-muted'}`}>
+                        {isCompleted ? <CheckCircle className="h-4 w-4 text-primary" /> : <span>{i + 1}</span>}
+                      </div>
+                      <span className="truncate flex-1 text-xs">{l.titulo}</span>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Bottom button */}
+            {nextModuleId && (
+              <div className="p-3 border-t border-border">
+                <Button asChild className="w-full h-11 font-semibold btn-ripple bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow">
+                  <Link to={`/app/modulo/${nextModuleId}`}>
+                    Próximo módulo <ChevronRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            )}
           </aside>
         </div>
 
-        {/* Mobile fixed bottom bar for lesson navigation */}
+        {/* Mobile fixed bottom bar */}
         <div className="fixed bottom-16 left-0 right-0 p-3 bg-background/90 backdrop-blur-lg border-t border-border z-30 md:hidden">
           <div className="flex items-center gap-2">
             {siblings.prev ? (
-              <Button asChild variant="outline" size="sm" className="flex-1 h-11 text-xs">
+              <Button asChild variant="secondary" size="sm" className="flex-1 h-11 text-xs">
                 <Link to={`/app/aula/${siblings.prev}`}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Link>
               </Button>
             ) : <div className="flex-1" />}
@@ -262,7 +356,7 @@ export default function LessonPage() {
               onClick={markComplete}
               disabled={completed || marking}
               size="sm"
-              className={`flex-1 h-11 text-xs font-semibold ${completed ? 'bg-accent text-accent-foreground' : 'bg-gradient-to-r from-primary to-[hsl(142_72%_37%)]'}`}
+              className={`flex-1 h-11 text-xs font-semibold ${completed ? 'bg-primary text-primary-foreground' : 'bg-gradient-to-r from-primary to-[hsl(142_72%_37%)]'}`}
             >
               {marking ? <Loader2 className="h-4 w-4 animate-spin" /> : completed ? '✓ Concluída' : <><CheckCircle className="mr-1 h-4 w-4" /> Concluir</>}
             </Button>
