@@ -292,3 +292,80 @@ input:focus, textarea:focus, select:focus {
   height: 0;
   pointer-events: none;
 }
+
+/* ── Mobile-first improvements ── */
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe area for bottom nav */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Minimum touch targets */
+@media (max-width: 767px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+  }
+  
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* Admin mobile card-style tables */
+@media (max-width: 767px) {
+  .admin-table-mobile table {
+    display: block;
+  }
+  .admin-table-mobile thead {
+    display: none;
+  }
+  .admin-table-mobile tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .admin-table-mobile tr {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid hsl(var(--border));
+    border-radius: 1rem;
+    padding: 1rem;
+    background: hsl(var(--card));
+  }
+  .admin-table-mobile td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    border: none;
+  }
+  .admin-table-mobile td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+/* Floating label admin inputs */
+@media (max-width: 767px) {
+  .admin-input {
+    min-height: 48px;
+  }
+}
+
+/* Badge pulse animation for notifications */
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.badge-pulse {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
