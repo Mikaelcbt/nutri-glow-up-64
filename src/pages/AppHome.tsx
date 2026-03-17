@@ -54,6 +54,7 @@ export default function AppHome() {
   const [loading, setLoading] = useState(true);
   const [requestModal, setRequestModal] = useState<string | null>(null);
   const myProgsRef = useRef<HTMLDivElement>(null);
+  const exploreRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const isAdmin = profile?.role === 'admin';
 
@@ -328,52 +329,59 @@ export default function AppHome() {
           )}
         </motion.section>
 
-        {/* ===== EXPLORE OS PROGRAMAS (vitrine) ===== */}
+        {/* ===== EXPLORE OS PROGRAMAS (carrossel Netflix) ===== */}
         <motion.section className="px-4 py-8 md:px-16 md:py-12" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-          <h2 className="mb-4 md:mb-6 font-display text-2xl md:text-3xl font-semibold text-foreground">Explore os Programas</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="mb-4 md:mb-6 flex items-center justify-between">
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-foreground">Explore os Programas</h2>
+            {allProducts.length > 3 && (
+              <div className="hidden md:flex gap-2">
+                <button onClick={() => exploreRef.current?.scrollBy({ left: -220, behavior: 'smooth' })} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronLeft className="h-5 w-5" /></button>
+                <button onClick={() => exploreRef.current?.scrollBy({ left: 220, behavior: 'smooth' })} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronRight className="h-5 w-5" /></button>
+              </div>
+            )}
+          </div>
+          <div ref={exploreRef} className="flex gap-3 md:gap-4 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory md:snap-none" style={{ scrollbarWidth: 'none' }}>
             {allProducts.map((p, i) => {
               const hasAccess = isAdmin || !!accessMap[p.id];
-              const modCount = p.modules?.length || 0;
-              const lessonCount = p.modules?.reduce((s, m: any) => s + (m.lessons?.length || 0), 0) || 0;
               return (
-                <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
-                  className="group glass-card rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-3 hover:shadow-green-glow hover:border-primary/30"
+                <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}
+                  className="flex-shrink-0 snap-center" style={{ width: '190px' }}
                 >
-                  <div className="relative overflow-hidden">
-                    {p.imagem_capa_url ? (
-                      <img src={p.imagem_capa_url} alt={p.nome} className="h-40 md:h-48 w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                      <div className="h-40 md:h-48 w-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                        <BookOpen className="h-10 w-10 text-primary/40" />
+                  {hasAccess ? (
+                    <Link to={`/app/programa/${p.slug}`} className="group block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105" style={{ height: '280px' }}>
+                      <div className="relative h-full w-full">
+                        {p.imagem_capa_url ? (
+                          <img src={p.imagem_capa_url} alt={p.nome} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                            <BookOpen className="h-10 w-10 text-primary/40" />
+                          </div>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-[#0d1a0f]/90 px-3 py-3">
+                          <h3 className="text-white font-bold text-sm leading-tight line-clamp-2">{p.nome}</h3>
+                        </div>
                       </div>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background/60 to-transparent" />
-                    {!hasAccess && (
-                      <div className="absolute top-3 right-3">
-                        <span className="flex items-center gap-1 rounded-full bg-background/80 backdrop-blur-sm px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                          <Lock className="h-3 w-3" /> Bloqueado
-                        </span>
+                    </Link>
+                  ) : (
+                    <button onClick={() => setRequestModal(p.nome)} className="group block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 text-left w-full" style={{ height: '280px' }}>
+                      <div className="relative h-full w-full">
+                        {p.imagem_capa_url ? (
+                          <img src={p.imagem_capa_url} alt={p.nome} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                            <BookOpen className="h-10 w-10 text-primary/40" />
+                          </div>
+                        )}
+                        {/* Lock overlay on hover */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <Lock className="h-10 w-10 text-white" />
+                        </div>
+                        <div className="absolute inset-x-0 bottom-0 bg-[#0d1a0f]/90 px-3 py-3">
+                          <h3 className="text-white font-bold text-sm leading-tight line-clamp-2">{p.nome}</h3>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="p-4 md:p-5 space-y-3">
-                    <h3 className="font-display text-lg md:text-xl font-semibold text-foreground line-clamp-2">{p.nome}</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{p.descricao}</p>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5"><Layers className="h-3 w-3" /> {modCount} módulos</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5"><BookOpen className="h-3 w-3" /> {lessonCount} aulas</span>
-                    </div>
-                    {hasAccess ? (
-                      <Button asChild size="sm" className="w-full btn-ripple bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-sm hover:shadow-green-glow hover:-translate-y-0.5 transition-all duration-300">
-                        <Link to={`/app/programa/${p.slug}`}><Play className="mr-2 h-4 w-4" /> Acessar</Link>
-                      </Button>
-                    ) : (
-                      <Button variant="outline" size="sm" className="w-full border-primary/30 text-primary hover:bg-accent transition-all duration-300" onClick={() => setRequestModal(p.nome)}>
-                        <ExternalLink className="mr-2 h-4 w-4" /> Saiba mais
-                      </Button>
-                    )}
-                  </div>
+                    </button>
+                  )}
                 </motion.div>
               );
             })}
