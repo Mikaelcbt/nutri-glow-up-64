@@ -25,6 +25,7 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [daysSince, setDaysSince] = useState(0);
+  const [waterReminder, setWaterReminder] = useState(isWaterReminderEnabled());
 
   useEffect(() => { if (user) loadAll(); }, [user]);
 
