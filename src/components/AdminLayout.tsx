@@ -27,8 +27,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarContent = (
     <>
       <div className="p-6">
-        <Link to="/admin" className="font-display text-2xl text-primary tracking-wide" onClick={() => setDrawerOpen(false)}>
-          JP NUTRICARE
+        <Link to="/admin" className="flex items-center gap-2" onClick={() => setDrawerOpen(false)}>
+          <img src="/images/logo-jp-nutricare.png" alt="JP NutriCare" className="h-10 object-contain" />
         </Link>
         <p className="text-xs text-muted-foreground mt-1">Painel Administrativo</p>
       </div>

@@ -34,9 +34,9 @@ export default function Register() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="font-display text-5xl font-semibold text-foreground">JP NutriCare</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Crie sua conta e comece sua transformação</p>
+        <div className="text-center flex flex-col items-center">
+          <img src="/images/logo-jp-nutricare.png" alt="JP NutriCare" className="h-12 object-contain mb-3" />
+          <p className="text-sm text-muted-foreground">Crie sua conta e comece sua transformação</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-soft">
