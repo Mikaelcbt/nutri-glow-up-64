@@ -353,9 +353,9 @@ export default function AppHome() {
 
         {/* Module Carousel — glassmorphism */}
         {modules.length > 0 && (
-          <motion.section className="px-8 py-12 md:px-16" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="font-display text-3xl font-semibold text-foreground">Módulos do Programa</h2>
+          <motion.section className="px-4 py-8 md:px-16 md:py-12" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <div className="mb-4 md:mb-6 flex items-center justify-between">
+              <h2 className="font-display text-2xl md:text-3xl font-semibold text-foreground">Módulos do Programa</h2>
               <div className="flex gap-2">
                 <button onClick={() => scrollCarousel('left')} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronLeft className="h-5 w-5" /></button>
                 <button onClick={() => scrollCarousel('right')} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronRight className="h-5 w-5" /></button>
