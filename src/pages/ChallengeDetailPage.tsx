@@ -6,10 +6,8 @@ import AppLayout from '@/components/AppLayout';
 import { AnimatedPage, fadeInUp } from '@/components/AnimatedPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Lock, Calendar, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface Challenge {
   id: string;
@@ -70,9 +68,11 @@ export default function ChallengeDetailPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="px-8 py-8 md:px-16 space-y-6">
-          <Skeleton className="h-64 w-full rounded-2xl" />
-          <div className="flex gap-4">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-[240px] w-[180px] rounded-xl flex-shrink-0" />)}</div>
+        <div className="px-4 py-8 md:px-16 space-y-6">
+          <Skeleton className="h-64 w-full rounded-2xl shimmer" />
+          <div className="grid grid-cols-3 md:flex gap-3 md:gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-[140px] md:h-[240px] md:w-[180px] rounded-xl shimmer" />)}
+          </div>
         </div>
       </AppLayout>
     );
@@ -93,6 +93,85 @@ export default function ChallengeDetailPage() {
   const progressPct = challenge.total_dias > 0 ? Math.round((completedCount / challenge.total_dias) * 100) : 0;
   const currentDay = days.find(d => d.liberado && !completedDays.has(d.numero_dia));
 
+  const renderDayCard = (day: ChallengeDay, i: number, size: 'sm' | 'lg') => {
+    const completed = completedDays.has(day.numero_dia);
+    const isCurrent = currentDay?.id === day.id;
+    const isLocked = !day.liberado;
+    const isSmall = size === 'sm';
+
+    const inner = (
+      <div className={`relative overflow-hidden rounded-xl ${isSmall ? 'h-[140px]' : 'h-[240px] w-[180px]'} ${isCurrent && !isLocked ? 'ring-2 ring-primary' : ''}`}>
+        {/* Background */}
+        {day.imagem_url ? (
+          <>
+            <img src={day.imagem_url} alt={day.titulo} className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          </>
+        ) : (
+          <div className={`absolute inset-0 ${isLocked ? 'bg-muted/40' : 'bg-gradient-to-br from-primary/15 via-accent/25 to-primary/10'}`} />
+        )}
+
+        {/* Locked overlay */}
+        {isLocked && (
+          <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-foreground/5 ${isSmall ? '' : 'group-hover:bg-black/40'} transition-all duration-300 rounded-xl`}>
+            <Lock className={`text-muted-foreground ${isSmall ? 'h-4 w-4' : 'h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white'}`} />
+            {!isSmall && <span className="text-white text-xs font-medium mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Bloqueado</span>}
+          </div>
+        )}
+
+        {/* Completed badge */}
+        {completed && (
+          <div className={`absolute top-2 right-2 z-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ${isSmall ? 'w-5 h-5' : 'w-7 h-7'}`}>
+            <Check className={isSmall ? 'h-3 w-3' : 'h-4 w-4'} strokeWidth={3} />
+          </div>
+        )}
+
+        {/* Unlocked hover CTA (desktop only) */}
+        {!isLocked && !isSmall && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-2 rounded-full shadow-lg">
+              {completed ? 'Ver novamente →' : 'Acessar dia →'}
+            </span>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center z-10 pointer-events-none">
+          <span className={`font-display font-bold leading-none ${day.imagem_url ? 'text-white' : 'text-foreground'} ${isSmall ? 'text-3xl' : 'text-5xl'}`}>
+            {day.numero_dia}
+          </span>
+          <span className={`mt-1 line-clamp-1 font-medium ${day.imagem_url ? 'text-white/80' : 'text-muted-foreground'} ${isSmall ? 'text-[9px]' : 'text-xs mt-2 line-clamp-2'}`}>
+            {day.titulo || `Dia ${day.numero_dia}`}
+          </span>
+          {isCurrent && !isLocked && (
+            <span className={`font-semibold text-primary mt-0.5 ${isSmall ? 'text-[8px]' : 'text-[10px] mt-2'}`}>▶ Atual</span>
+          )}
+        </div>
+      </div>
+    );
+
+    return (
+      <motion.div
+        key={day.id}
+        initial={{ opacity: 0, y: 15, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: i * 0.06, duration: 0.35, ease: [0, 0, 0.2, 1] }}
+        className={isSmall ? '' : 'flex-shrink-0'}
+      >
+        {isLocked ? (
+          <div className={`group cursor-not-allowed ${!isSmall ? 'transition-all duration-300' : ''}`}>{inner}</div>
+        ) : (
+          <Link
+            to={`/app/desafios/${challenge.id}/dia/${day.numero_dia}`}
+            className={`group block ${!isSmall ? 'transition-all duration-300 hover:-translate-y-2 hover:scale-[1.03]' : ''}`}
+          >
+            {inner}
+          </Link>
+        )}
+      </motion.div>
+    );
+  };
+
   return (
     <AppLayout>
       <AnimatedPage>
@@ -102,15 +181,15 @@ export default function ChallengeDetailPage() {
             {challenge.imagem_capa_url ? (
               <img src={challenge.imagem_capa_url} alt={challenge.titulo} className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full bg-accent" />
+              <div className="h-full w-full bg-gradient-to-br from-primary/20 via-accent to-primary/10" />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
           </div>
-          <div className="relative flex h-full items-end px-8 pb-8 md:px-16">
+          <div className="relative flex h-full items-end px-4 pb-6 md:px-16 md:pb-8">
             <motion.div variants={fadeInUp} initial="initial" animate="animate" className="space-y-3 w-full max-w-2xl">
               <Link to="/app/desafios" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Voltar</Link>
-              <h1 className="font-display text-4xl md:text-5xl font-semibold text-foreground">{challenge.titulo}</h1>
-              <p className="text-muted-foreground">{challenge.descricao}</p>
+              <h1 className="font-display text-3xl md:text-5xl font-semibold text-foreground">{challenge.titulo}</h1>
+              <p className="text-muted-foreground text-sm md:text-base">{challenge.descricao}</p>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {challenge.total_dias} dias</span>
                 <span>{releasedDays} liberados</span>
@@ -129,7 +208,7 @@ export default function ChallengeDetailPage() {
           </div>
         </section>
 
-        {/* Days Carousel */}
+        {/* Days */}
         <section className="px-4 py-6 md:px-16 md:py-8">
           <div className="flex items-center justify-between mb-4 md:mb-6">
             <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground">Dias do Desafio</h2>
@@ -139,161 +218,14 @@ export default function ChallengeDetailPage() {
             </div>
           </div>
 
-          {/* Mobile: 3-column grid; Desktop: carousel */}
+          {/* Mobile: 3-column grid */}
           <div className="grid grid-cols-3 gap-3 md:hidden">
-            {days.map((day, i) => {
-              const completed = completedDays.has(day.numero_dia);
-              const isCurrent = currentDay?.id === day.id;
-              const isLocked = !day.liberado;
-
-              const inner = (
-                <div className="relative aspect-[3/4] rounded-xl overflow-hidden">
-                  {day.imagem_url ? (
-                    <>
-                      <img src={day.imagem_url} alt={day.titulo} className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    </>
-                  ) : (
-                    <div className={`h-full w-full ${isLocked ? 'bg-muted/30' : 'bg-gradient-to-br from-primary/12 to-accent/20'}`} />
-                  )}
-                  {completed && (
-                    <div className="absolute top-1.5 right-1.5 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-[#22C55E] text-white">
-                      <Check className="h-3 w-3" strokeWidth={3} />
-                    </div>
-                  )}
-                  {isLocked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
-                      <Lock className="h-4 w-4 text-white/70" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center">
-                    <span className={`font-display text-2xl font-bold ${day.imagem_url ? 'text-white' : 'text-foreground'}`}>
-                      {day.numero_dia}
-                    </span>
-                    <span className={`text-[9px] mt-0.5 line-clamp-1 font-medium ${day.imagem_url ? 'text-white/80' : 'text-muted-foreground'}`}>
-                      {day.titulo || `Dia ${day.numero_dia}`}
-                    </span>
-                    {isCurrent && !isLocked && (
-                      <span className="text-[8px] font-semibold text-primary mt-0.5">▶ Atual</span>
-                    )}
-                  </div>
-                </div>
-              );
-
-              return (
-                <motion.div key={day.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
-                  {isLocked ? (
-                    <div className="cursor-not-allowed">{inner}</div>
-                  ) : (
-                    <Link to={`/app/desafios/${challenge.id}/dia/${day.numero_dia}`}>{inner}</Link>
-                  )}
-                </motion.div>
-              );
-            })}
+            {days.map((day, i) => renderDayCard(day, i, 'sm'))}
           </div>
 
-          {/* Desktop carousel (unchanged) */}
+          {/* Desktop: carousel */}
           <div ref={carouselRef} className="hidden md:flex gap-5 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
-            {days.map((day, i) => {
-              const completed = completedDays.has(day.numero_dia);
-              const isCurrent = currentDay?.id === day.id;
-              const isLocked = !day.liberado;
-
-              const cardBg = day.imagem_url ? null : (
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-accent/20 to-primary/8" />
-              );
-              const cardImg = day.imagem_url ? (
-                <div className="absolute inset-0">
-                  <img src={day.imagem_url} alt={day.titulo} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                </div>
-              ) : null;
-
-              const textColor = day.imagem_url ? 'text-white' : 'text-foreground';
-              const subTextColor = day.imagem_url ? 'text-white/80' : 'text-muted-foreground';
-
-              const inner = (
-                <>
-                  {cardImg}
-                  {cardBg}
-
-                  {/* Glassmorphism border overlay */}
-                  <div className={`absolute inset-0 rounded-2xl border transition-all duration-300 ${
-                    isLocked
-                      ? 'border-white/40 group-hover:border-white/60'
-                      : 'border-white/50 group-hover:border-primary group-hover:shadow-green-glow'
-                  }`} style={{ backdropFilter: 'blur(1px)' }} />
-
-                  {/* Completed badge — always visible */}
-                  {completed && (
-                    <div className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-[#22C55E] text-white shadow-md">
-                      <Check className="h-4 w-4" strokeWidth={3} />
-                    </div>
-                  )}
-
-                  {/* Locked hover overlay */}
-                  {isLocked && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/0 group-hover:bg-black/50 transition-all duration-300 rounded-2xl">
-                      <Lock className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="text-white text-xs font-medium mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        Conteúdo bloqueado
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Unlocked hover overlay — CTA button */}
-                  {!isLocked && (
-                    <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl">
-                      <span className="bg-[#22C55E] text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg">
-                        {completed ? 'Ver novamente →' : 'Acessar dia →'}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Main content */}
-                  <div className="relative flex flex-col items-center justify-center h-full p-4 text-center z-10 pointer-events-none">
-                    <span className={`font-display text-5xl font-bold leading-none ${textColor}`}>
-                      {day.numero_dia}
-                    </span>
-                    <span className={`text-xs mt-2 line-clamp-2 font-medium ${subTextColor}`}>
-                      {day.titulo || `Dia ${day.numero_dia}`}
-                    </span>
-                    {isCurrent && !isLocked && (
-                      <span className={`text-[10px] font-semibold mt-2 ${day.imagem_url ? 'text-white' : 'text-primary'}`}>
-                        ▶ Atual
-                      </span>
-                    )}
-                  </div>
-                </>
-              );
-
-              return (
-                <motion.div
-                  key={day.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="flex-shrink-0"
-                >
-                  {isLocked ? (
-                    <div
-                      className="group relative overflow-hidden rounded-2xl cursor-not-allowed transition-all duration-300"
-                      style={{ width: '180px', height: '240px' }}
-                    >
-                      {inner}
-                    </div>
-                  ) : (
-                    <Link
-                      to={`/app/desafios/${challenge.id}/dia/${day.numero_dia}`}
-                      className="group relative block overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:scale-[1.03]"
-                      style={{ width: '180px', height: '240px' }}
-                    >
-                      {inner}
-                    </Link>
-                  )}
-                </motion.div>
-              );
-            })}
+            {days.map((day, i) => renderDayCard(day, i, 'lg'))}
           </div>
         </section>
       </AnimatedPage>

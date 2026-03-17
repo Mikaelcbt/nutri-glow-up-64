@@ -44,11 +44,21 @@ export default function ProfilePage() {
   const loadProgress = async () => {
     if (!user) return;
     try {
-      const { data: assocs } = await supabase.from('associacoes').select('product_id').eq('user_id', user.id).eq('status', 'ativo');
-      if (!assocs?.length) return;
+      let productIds: string[] = [];
+      
+      // Admin sees all active products; regular users only see associated ones
+      if (profile?.role === 'admin') {
+        const { data: allProducts } = await supabase.from('products').select('id').eq('ativo', true);
+        productIds = allProducts?.map(p => p.id) || [];
+      } else {
+        const { data: assocs } = await supabase.from('associacoes').select('product_id').eq('user_id', user.id).eq('status', 'ativo');
+        productIds = assocs?.map(a => a.product_id) || [];
+      }
+      
+      if (!productIds.length) return;
       const results: { nome: string; progress: number }[] = [];
-      for (const assoc of assocs) {
-        const { data: product } = await supabase.from('products').select('id, nome').eq('id', assoc.product_id).maybeSingle();
+      for (const pid of productIds) {
+        const { data: product } = await supabase.from('products').select('id, nome').eq('id', pid).maybeSingle();
         if (!product) continue;
         const { data: mods } = await supabase.from('modules').select('id').eq('product_id', product.id);
         const modIds = mods?.map(m => m.id) || [];

@@ -200,8 +200,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     />
                   )}
-                  <item.icon className="h-5 w-5" />
+                  <motion.div animate={active ? { scale: 1.1 } : { scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+                    <item.icon className="h-5 w-5" />
+                  </motion.div>
                   <span className="text-[10px] font-medium leading-none">{item.title}</span>
+                  {active && (
+                    <motion.div
+                      className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary"
+                      animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                    />
+                  )}
                 </Link>
               );
             })}
