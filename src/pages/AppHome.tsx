@@ -226,33 +226,33 @@ export default function AppHome() {
             {/* Floating particles */}
             <FloatingParticles />
 
-            <div className="relative flex h-full items-center px-8 md:px-16">
-              <motion.div className="max-w-xl space-y-6" variants={staggerContainer} initial="initial" animate="animate">
-                <motion.span variants={fadeInUp} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent-foreground">
+            <div className="relative flex h-full items-center px-4 md:px-16">
+              <motion.div className="max-w-xl space-y-4 md:space-y-6" variants={staggerContainer} initial="initial" animate="animate">
+                <motion.span variants={fadeInUp} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 md:px-4 md:py-1.5 text-[10px] md:text-xs font-semibold uppercase tracking-widest text-accent-foreground">
                   {featuredHasAccess ? '✦ Programa em destaque' : 'Programa disponível'}
                 </motion.span>
-                <motion.h1 variants={fadeInUp} className="font-display text-5xl leading-tight text-foreground md:text-7xl font-semibold">{featuredProduct.nome}</motion.h1>
-                <motion.p variants={fadeInUp} className="text-base leading-relaxed text-muted-foreground md:text-lg">{featuredProduct.descricao}</motion.p>
-                <motion.div variants={fadeInUp} className="flex items-center gap-6 text-sm text-muted-foreground">
+                <motion.h1 variants={fadeInUp} className="font-display text-3xl leading-tight text-foreground md:text-7xl font-semibold">{featuredProduct.nome}</motion.h1>
+                <motion.p variants={fadeInUp} className="text-sm leading-relaxed text-muted-foreground md:text-lg line-clamp-3 md:line-clamp-none">{featuredProduct.descricao}</motion.p>
+                <motion.div variants={fadeInUp} className="flex items-center gap-4 md:gap-6 text-xs md:text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5"><Layers className="h-4 w-4" /> {animatedModules} módulos</span>
                   <span className="flex items-center gap-1.5"><BookOpen className="h-4 w-4" /> {animatedLessons} aulas</span>
                 </motion.div>
-                <motion.div variants={fadeInUp} className="flex gap-3">
+                <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-3">
                   {featuredHasAccess ? (
                     <>
-                      <Button asChild size="lg" className="btn-ripple h-12 px-8 text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                      <Button asChild size="lg" className="btn-ripple h-12 px-6 md:px-8 text-sm md:text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}><Play className="mr-2 h-5 w-5" /> Continuar programa</Link>
                       </Button>
-                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold border-primary text-primary hover:bg-accent active:scale-[0.97] transition-all duration-300">
+                      <Button asChild variant="outline" size="lg" className="h-12 px-6 md:px-8 text-sm md:text-base font-semibold border-primary text-primary hover:bg-accent active:scale-[0.97] transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}>Saiba mais</Link>
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Button size="lg" onClick={() => setRequestModal(featuredProduct.nome)} className="btn-ripple h-12 px-8 text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                      <Button size="lg" onClick={() => setRequestModal(featuredProduct.nome)} className="btn-ripple h-12 px-6 md:px-8 text-sm md:text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                         Solicitar acesso
                       </Button>
-                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold active:scale-[0.97] transition-all duration-300">
+                      <Button asChild variant="outline" size="lg" className="h-12 px-6 md:px-8 text-sm md:text-base font-semibold active:scale-[0.97] transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}>Ver detalhes</Link>
                       </Button>
                     </>
