@@ -361,14 +361,14 @@ export default function AppHome() {
                 <button onClick={() => scrollCarousel('right')} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronRight className="h-5 w-5" /></button>
               </div>
             </div>
-            <div ref={carouselRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
+            <div ref={carouselRef} className="flex gap-4 md:gap-5 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory md:snap-none" style={{ scrollbarWidth: 'none' }}>
               {modules.map((mod, i) => {
                 const color = mod.cor_destaque || moduleColors[i % moduleColors.length];
                 return (
                   <motion.div key={mod.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}>
                     <Link to={`/app/modulo/${mod.id}`}
-                      className="group relative flex-shrink-0 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-3 hover:shadow-green-glow block"
-                      style={{ width: 200, height: 320 }}
+                      className="group relative flex-shrink-0 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-3 hover:shadow-green-glow block snap-center"
+                      style={{ width: 'clamp(160px, 45vw, 200px)', height: 'clamp(220px, 60vw, 320px)' }}
                     >
                       {(mod.imagem_url || featuredProduct?.imagem_capa_url) ? (
                         <img
