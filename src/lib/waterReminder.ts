@@ -57,11 +57,9 @@ function showWaterNotification() {
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: 'water-reminder',
-        renotify: true,
         data: { url: '/app' },
-      });
+      } as NotificationOptions);
     }).catch(() => {
-      // Fallback to regular notification
       new Notification('💧 Hora de beber água!', {
         body: 'Mantenha-se hidratado para melhores resultados.',
         icon: '/icon-192.png',
