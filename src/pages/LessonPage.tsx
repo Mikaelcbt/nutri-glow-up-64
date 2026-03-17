@@ -250,6 +250,30 @@ export default function LessonPage() {
           </aside>
         </div>
 
+        {/* Mobile fixed bottom bar for lesson navigation */}
+        <div className="fixed bottom-16 left-0 right-0 p-3 bg-background/90 backdrop-blur-lg border-t border-border z-30 md:hidden">
+          <div className="flex items-center gap-2">
+            {siblings.prev ? (
+              <Button asChild variant="outline" size="sm" className="flex-1 h-11 text-xs">
+                <Link to={`/app/aula/${siblings.prev}`}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Link>
+              </Button>
+            ) : <div className="flex-1" />}
+            <Button
+              onClick={markComplete}
+              disabled={completed || marking}
+              size="sm"
+              className={`flex-1 h-11 text-xs font-semibold ${completed ? 'bg-accent text-accent-foreground' : 'bg-gradient-to-r from-primary to-[hsl(142_72%_37%)]'}`}
+            >
+              {marking ? <Loader2 className="h-4 w-4 animate-spin" /> : completed ? '✓ Concluída' : <><CheckCircle className="mr-1 h-4 w-4" /> Concluir</>}
+            </Button>
+            {siblings.next ? (
+              <Button asChild size="sm" className="flex-1 h-11 text-xs">
+                <Link to={`/app/aula/${siblings.next}`}>Próxima <ChevronRight className="ml-1 h-4 w-4" /></Link>
+              </Button>
+            ) : <div className="flex-1" />}
+          </div>
+        </div>
+
         <Dialog open={showModuleComplete} onOpenChange={setShowModuleComplete}>
           <DialogContent className="bg-card border-border text-center">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 15 }}>

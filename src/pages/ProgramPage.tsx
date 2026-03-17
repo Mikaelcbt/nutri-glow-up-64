@@ -127,9 +127,9 @@ export default function ProgramPage() {
         </section>
 
         {/* Modules */}
-        <section className="px-8 py-12 md:px-16">
-          <motion.h2 variants={fadeInUp} initial="initial" animate="animate" className="mb-8 font-display text-3xl font-semibold text-foreground">Módulos</motion.h2>
-          <div className="space-y-4">
+        <section className="px-4 py-8 md:px-16 md:py-12">
+          <motion.h2 variants={fadeInUp} initial="initial" animate="animate" className="mb-6 md:mb-8 font-display text-2xl md:text-3xl font-semibold text-foreground">Módulos</motion.h2>
+          <div className="space-y-3 md:space-y-4">
             {modules.map((mod, i) => {
               const moduleAccessible = hasAccess || isAdmin;
               return (

@@ -97,7 +97,7 @@ export default function WaterReminderBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -60, opacity: 0 }}
           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="mx-8 md:mx-16 mt-4 rounded-2xl border border-primary/20 bg-accent/60 backdrop-blur-sm px-5 py-3.5 flex items-center gap-3 shadow-card"
+          className="mx-4 md:mx-16 mt-4 rounded-2xl border border-primary/20 bg-accent/60 backdrop-blur-sm px-4 md:px-5 py-3 md:py-3.5 flex items-center gap-3 shadow-card"
         >
           <span className="text-2xl">💧</span>
           <span className="text-sm font-medium text-foreground flex-1">

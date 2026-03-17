@@ -86,10 +86,10 @@ export default function ChallengesPage() {
   return (
     <AppLayout>
       <AnimatedPage>
-        <div className="px-8 py-8 md:px-16">
-          <motion.div variants={fadeInUp} className="mb-8">
-            <h1 className="font-display text-4xl font-semibold text-foreground">Desafios</h1>
-            <p className="text-muted-foreground mt-2">Participe dos desafios e transforme seus hábitos!</p>
+        <div className="px-4 py-6 md:px-16 md:py-8">
+          <motion.div variants={fadeInUp} className="mb-6 md:mb-8">
+            <h1 className="font-display text-2xl md:text-4xl font-semibold text-foreground">Desafios</h1>
+            <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">Participe dos desafios e transforme seus hábitos!</p>
           </motion.div>
 
           {loading ? (
