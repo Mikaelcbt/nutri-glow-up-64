@@ -181,9 +181,9 @@ export default function LessonPage() {
         ]} />
 
         <div className="flex flex-col lg:flex-row">
-          <motion.div className="flex-1 max-w-4xl mx-auto px-4 py-8 lg:px-8" variants={staggerContainer} initial="initial" animate="animate">
+          <motion.div className="flex-1 max-w-4xl mx-auto px-4 py-6 lg:px-8 lg:py-8 pb-28 md:pb-8" variants={staggerContainer} initial="initial" animate="animate">
             {lesson.video_url && (
-              <motion.div variants={fadeInUp} className="aspect-video w-full overflow-hidden rounded-2xl bg-card mb-8 shadow-soft border border-border">
+              <motion.div variants={fadeInUp} className="aspect-video w-full overflow-hidden rounded-xl md:rounded-2xl bg-card mb-6 md:mb-8 shadow-soft border border-border">
                 {isDirectVideo(lesson.video_url) ? (
                   <video src={lesson.video_url} controls className="h-full w-full" />
                 ) : (
@@ -192,12 +192,13 @@ export default function LessonPage() {
               </motion.div>
             )}
 
-            <motion.div variants={fadeInUp} className="flex items-start justify-between gap-4 mb-8">
+            <motion.div variants={fadeInUp} className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6 md:mb-8">
               <div>
-                <h1 className="font-display text-4xl font-semibold text-foreground">{lesson.titulo}</h1>
-                <p className="mt-2 text-muted-foreground">{lesson.descricao}</p>
+                <h1 className="font-display text-2xl md:text-4xl font-semibold text-foreground">{lesson.titulo}</h1>
+                <p className="mt-2 text-sm md:text-base text-muted-foreground">{lesson.descricao}</p>
               </div>
-              <div className="flex flex-col items-end gap-2 relative">
+              {/* Desktop mark complete button */}
+              <div className="hidden md:flex flex-col items-end gap-2 relative">
                 <Button onClick={markComplete} disabled={completed || marking} variant={completed ? 'outline' : 'default'}
                   className={`flex-shrink-0 active:scale-[0.97] transition-transform ${completed ? 'border-primary text-primary' : ''}`}
                 >
@@ -220,12 +221,13 @@ export default function LessonPage() {
             </motion.div>
 
             {lesson.conteudo && (
-              <motion.div variants={fadeInUp} className="prose max-w-none mb-12 prose-headings:font-display prose-a:text-primary prose-headings:text-foreground text-foreground">
+              <motion.div variants={fadeInUp} className="prose max-w-none mb-8 md:mb-12 prose-headings:font-display prose-a:text-primary prose-headings:text-foreground text-foreground text-sm md:text-base">
                 <ReactMarkdown>{lesson.conteudo}</ReactMarkdown>
               </motion.div>
             )}
 
-            <motion.div variants={fadeInUp} className="flex items-center justify-between border-t border-border pt-6">
+            {/* Desktop navigation */}
+            <motion.div variants={fadeInUp} className="hidden md:flex items-center justify-between border-t border-border pt-6">
               {siblings.prev ? <Button asChild variant="outline" className="active:scale-[0.97]"><Link to={`/app/aula/${siblings.prev}`}><ChevronLeft className="mr-2 h-4 w-4" /> Aula anterior</Link></Button> : <div />}
               {siblings.next ? <Button asChild className="active:scale-[0.97]"><Link to={`/app/aula/${siblings.next}`}>Próxima aula <ChevronRight className="ml-2 h-4 w-4" /></Link></Button> : <div />}
             </motion.div>
