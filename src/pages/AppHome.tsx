@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { AnimatedPage, staggerContainer, fadeInUp } from '@/components/AnimatedPage';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
+import HabitsChecklist from '@/components/HabitsChecklist';
 
 interface Product {
   id: string; nome: string; slug: string; descricao: string;
@@ -292,6 +293,9 @@ export default function AppHome() {
             </motion.div>
           </section>
         )}
+
+        {/* Habits Checklist */}
+        <HabitsChecklist />
 
         {/* All Programs Grid — glassmorphism cards */}
         {allProducts.length > 1 && (
