@@ -1,5 +1,6 @@
 // Water reminder notification utilities
 import { requestNotificationPermission, isPushSupported } from './pushNotifications';
+import { supabase } from './supabase';
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 let reminderTimer: ReturnType<typeof setInterval> | null = null;
@@ -44,12 +45,60 @@ function stopWaterReminder() {
   }
 }
 
-function showWaterNotification() {
+async function showWaterNotification() {
   if (!isWaterReminderEnabled()) return;
-  if (!('Notification' in window)) return;
-  if (Notification.permission !== 'granted') return;
 
-  // Use SW notification if available for background support
+  // Try to send push via edge function
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    if (userId) {
+      // Check if water habit already done today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: habits } = await supabase
+        .from('habitos')
+        .select('id')
+        .eq('ativo', true)
+        .ilike('titulo', '%água%');
+
+      if (habits?.[0]) {
+        const { data: record } = await supabase
+          .from('habitos_registro')
+          .select('concluido')
+          .eq('user_id', userId)
+          .eq('habito_id', habits[0].id)
+          .eq('data', today)
+          .maybeSingle();
+
+        if (record?.concluido) return; // Already done today
+      }
+
+      // Send push via edge function
+      const { data: sub } = await supabase
+        .from('push_subscriptions')
+        .select('subscription')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (sub?.subscription) {
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            subscription: sub.subscription,
+            title: '💧 Hora de beber água!',
+            body: 'Mantenha-se hidratado para melhores resultados.',
+            url: '/app',
+          },
+        });
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('Water push error:', err);
+  }
+
+  // Fallback: local SW notification
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then((reg) => {
       reg.showNotification('💧 Hora de beber água!', {
