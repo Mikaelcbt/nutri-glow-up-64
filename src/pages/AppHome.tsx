@@ -201,11 +201,11 @@ export default function AppHome() {
   return (
     <AppLayout>
       <AnimatedPage>
-        <motion.div className="px-8 pt-6 md:px-16" variants={fadeInUp}>
-          <h2 className="text-lg text-muted-foreground">
+        <motion.div className="px-4 pt-4 md:px-16 md:pt-6" variants={fadeInUp}>
+          <h2 className="text-base md:text-lg text-muted-foreground">
             {getGreeting()}, <span className="text-foreground font-semibold">{profile?.nome_completo || 'Usuário'}</span>! 👋
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">Continue sua jornada de transformação.</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">Continue sua jornada de transformação.</p>
         </motion.div>
 
         {/* Hero with parallax */}
