@@ -17,6 +17,7 @@ export function useNutriChat() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
+  const [platformContext, setPlatformContext] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
