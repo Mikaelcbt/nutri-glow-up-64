@@ -195,7 +195,7 @@ export function useNutriChat() {
     } finally {
       setSending(false);
     }
-  }, [user, profile, sending, messages]);
+  }, [user, profile, sending, messages, loadPlatformContext]);
 
   const clearHistory = useCallback(async () => {
     if (!user) return;
