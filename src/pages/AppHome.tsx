@@ -405,7 +405,7 @@ export default function AppHome() {
         )}
 
         {/* Footer */}
-        <footer className="border-t border-border bg-card/50 px-8 py-6 md:px-16 mt-8">
+        <footer className="border-t border-border bg-card/50 px-4 py-6 md:px-16 mt-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>© 2026 JP NutriCare. Todos os direitos reservados.</span>
             <span>v1.0.0</span>
