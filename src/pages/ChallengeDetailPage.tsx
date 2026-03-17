@@ -130,16 +130,70 @@ export default function ChallengeDetailPage() {
         </section>
 
         {/* Days Carousel */}
-        <section className="px-8 py-8 md:px-16">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-semibold text-foreground">Dias do Desafio</h2>
-            <div className="flex gap-2">
+        <section className="px-4 py-6 md:px-16 md:py-8">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground">Dias do Desafio</h2>
+            <div className="hidden md:flex gap-2">
               <button onClick={() => scroll('left')} className="rounded-full border border-border p-2 text-foreground hover:bg-secondary transition-all"><ChevronLeft className="h-5 w-5" /></button>
               <button onClick={() => scroll('right')} className="rounded-full border border-border p-2 text-foreground hover:bg-secondary transition-all"><ChevronRight className="h-5 w-5" /></button>
             </div>
           </div>
 
-          <div ref={carouselRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
+          {/* Mobile: 3-column grid; Desktop: carousel */}
+          <div className="grid grid-cols-3 gap-3 md:hidden">
+            {days.map((day, i) => {
+              const completed = completedDays.has(day.numero_dia);
+              const isCurrent = currentDay?.id === day.id;
+              const isLocked = !day.liberado;
+
+              const inner = (
+                <div className="relative aspect-[3/4] rounded-xl overflow-hidden">
+                  {day.imagem_url ? (
+                    <>
+                      <img src={day.imagem_url} alt={day.titulo} className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    </>
+                  ) : (
+                    <div className={`h-full w-full ${isLocked ? 'bg-muted/30' : 'bg-gradient-to-br from-primary/12 to-accent/20'}`} />
+                  )}
+                  {completed && (
+                    <div className="absolute top-1.5 right-1.5 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-[#22C55E] text-white">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </div>
+                  )}
+                  {isLocked && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                      <Lock className="h-4 w-4 text-white/70" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center">
+                    <span className={`font-display text-2xl font-bold ${day.imagem_url ? 'text-white' : 'text-foreground'}`}>
+                      {day.numero_dia}
+                    </span>
+                    <span className={`text-[9px] mt-0.5 line-clamp-1 font-medium ${day.imagem_url ? 'text-white/80' : 'text-muted-foreground'}`}>
+                      {day.titulo || `Dia ${day.numero_dia}`}
+                    </span>
+                    {isCurrent && !isLocked && (
+                      <span className="text-[8px] font-semibold text-primary mt-0.5">▶ Atual</span>
+                    )}
+                  </div>
+                </div>
+              );
+
+              return (
+                <motion.div key={day.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
+                  {isLocked ? (
+                    <div className="cursor-not-allowed">{inner}</div>
+                  ) : (
+                    <Link to={`/app/desafios/${challenge.id}/dia/${day.numero_dia}`}>{inner}</Link>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Desktop carousel (unchanged) */}
+          <div ref={carouselRef} className="hidden md:flex gap-5 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
             {days.map((day, i) => {
               const completed = completedDays.has(day.numero_dia);
               const isCurrent = currentDay?.id === day.id;
