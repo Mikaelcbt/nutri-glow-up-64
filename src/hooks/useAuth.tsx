@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { subscribeToPush } from '@/lib/pushNotifications';
 
 interface Profile {
   id: string;
@@ -75,6 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (nextSession?.user) {
         await fetchProfile(nextSession.user.id);
+        // Register push subscription on login
+        const pushEnabled = localStorage.getItem('push_notifications_enabled');
+        if (pushEnabled !== 'false') {
+          subscribeToPush(nextSession.user.id).catch(() => {});
+        }
       } else if (isMounted) {
         setProfile(null);
       }

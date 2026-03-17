@@ -6,9 +6,10 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Pencil, Loader2, CheckCircle2, Award, BookOpen, Star, Trophy, Upload, Flame, Sparkles, Droplets } from 'lucide-react';
+import { Pencil, Loader2, CheckCircle2, Award, BookOpen, Star, Trophy, Upload, Flame, Sparkles, Droplets, Bell } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { isWaterReminderEnabled, setWaterReminderEnabled } from '@/lib/waterReminder';
+import { subscribeToPush, unsubscribeFromPush, isPushSupported } from '@/lib/pushNotifications';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
 import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
@@ -26,6 +27,7 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [daysSince, setDaysSince] = useState(0);
   const [waterReminder, setWaterReminder] = useState(isWaterReminderEnabled());
+  const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem('push_notifications_enabled') !== 'false');
 
   useEffect(() => { if (user) loadAll(); }, [user]);
 
@@ -287,6 +289,31 @@ export default function ProfilePage() {
                   }}
                 />
               </div>
+              {isPushSupported() && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                      <Bell className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Notificações push</p>
+                      <p className="text-xs text-muted-foreground">Receber alertas mesmo com o app fechado</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={pushEnabled}
+                    onCheckedChange={async (checked) => {
+                      setPushEnabled(checked);
+                      localStorage.setItem('push_notifications_enabled', String(checked));
+                      if (checked && user) {
+                        await subscribeToPush(user.id);
+                      } else if (!checked && user) {
+                        await unsubscribeFromPush(user.id);
+                      }
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
 

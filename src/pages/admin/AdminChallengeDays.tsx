@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { sendPushToAllUsers } from '@/lib/pushNotifications';
 import AdminLayout from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -105,6 +106,13 @@ export default function AdminChallengeDays() {
       link: `/app/desafios/${challenge.id}/dia/${dayNum}`, lida: false,
     }));
     await supabase.from('notificacoes').insert(notifications);
+
+    // Send push notifications
+    sendPushToAllUsers(
+      '🎯 Novo dia liberado!',
+      `Dia ${dayNum} do desafio "${challenge.titulo}" está disponível!`,
+      `/app/desafios/${challenge.id}`
+    ).catch(err => console.error('Push error:', err));
   };
 
   const toggleDay = async (day: DayData) => {
