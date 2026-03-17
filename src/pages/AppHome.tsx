@@ -12,6 +12,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { AnimatedPage, staggerContainer, fadeInUp } from '@/components/AnimatedPage';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
 import HabitsChecklist from '@/components/HabitsChecklist';
+import WaterReminderBanner from '@/components/WaterReminderBanner';
 
 interface Product {
   id: string; nome: string; slug: string; descricao: string;
