@@ -6,7 +6,9 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Pencil, Loader2, CheckCircle2, Award, BookOpen, Star, Trophy, Upload, Flame, Sparkles } from 'lucide-react';
+import { Pencil, Loader2, CheckCircle2, Award, BookOpen, Star, Trophy, Upload, Flame, Sparkles, Droplets } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { isWaterReminderEnabled, setWaterReminderEnabled } from '@/lib/waterReminder';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
 import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
@@ -23,6 +25,7 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [daysSince, setDaysSince] = useState(0);
+  const [waterReminder, setWaterReminder] = useState(isWaterReminderEnabled());
 
   useEffect(() => { if (user) loadAll(); }, [user]);
 
@@ -260,6 +263,31 @@ export default function ProfilePage() {
                 ))}
               </div>
             ) : <p className="text-muted-foreground mb-12">Nenhum programa ativo.</p>}
+          </motion.div>
+
+          {/* Reminders Settings */}
+          <motion.div className="mb-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}>
+            <h2 className="font-display text-2xl font-semibold mb-4 text-foreground">Lembretes</h2>
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                    <Droplets className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Lembrete de água</p>
+                    <p className="text-xs text-muted-foreground">Notificação a cada 1 hora para se hidratar</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={waterReminder}
+                  onCheckedChange={(checked) => {
+                    setWaterReminder(checked);
+                    setWaterReminderEnabled(checked);
+                  }}
+                />
+              </div>
+            </div>
           </motion.div>
 
           {completedHistory.length > 0 && (
