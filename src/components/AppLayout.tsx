@@ -64,11 +64,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center px-6 border-b border-border">
-          <Link to="/app" className="font-display text-2xl font-semibold tracking-wide flex items-center gap-1">
-            <span className="text-lg">🌿</span>
-            <span className="text-foreground">JP </span>
-            <span className="logo-shimmer">N</span>
-            <span className="text-foreground">utriCare</span>
+          <Link to="/app" className="flex items-center gap-2">
+            <img src="/images/logo-jp-nutricare.png" alt="JP NutriCare" className="h-10 object-contain" />
           </Link>
         </div>
 
