@@ -294,6 +294,9 @@ export default function AppHome() {
           </section>
         )}
 
+        {/* Habits Checklist */}
+        <HabitsChecklist />
+
         {/* All Programs Grid — glassmorphism cards */}
         {allProducts.length > 1 && (
           <motion.section className="px-8 py-12 md:px-16" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>

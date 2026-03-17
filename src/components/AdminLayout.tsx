@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Package, Layers, BookOpen, Users, LogOut, Home, ImageIcon, FileText, LayoutDashboard, Trophy } from 'lucide-react';
+import { Package, Layers, BookOpen, Users, LogOut, Home, ImageIcon, FileText, LayoutDashboard, Trophy, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { title: 'Transformações', path: '/admin/transformacoes', icon: ImageIcon },
   { title: 'Materiais', path: '/admin/materiais', icon: FileText },
   { title: 'Desafios', path: '/admin/desafios', icon: Trophy },
+  { title: 'Hábitos', path: '/admin/habitos', icon: ListChecks },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
