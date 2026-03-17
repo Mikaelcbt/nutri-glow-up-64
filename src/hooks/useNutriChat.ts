@@ -34,6 +34,52 @@ export function useNutriChat() {
       .then(({ data }) => setHasAccess((data?.length ?? 0) > 0));
   }, [user, profile]);
 
+  const loadPlatformContext = useCallback(async () => {
+    if (!user || platformContext) return platformContext;
+    try {
+      const [assocRes, progressRes, challengeRes] = await Promise.all([
+        supabase
+          .from('associacoes')
+          .select(`
+            status,
+            product:products(
+              nome, 
+              descricao,
+              modules(titulo, ordem, lessons(titulo, ordem, descricao))
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('status', 'ativo'),
+        supabase
+          .from('rastreamento_progresso')
+          .select('concluido, lesson:lessons(titulo, module:modules(titulo))')
+          .eq('user_id', user.id)
+          .eq('concluido', true),
+        supabase
+          .from('desafios')
+          .select(`
+            titulo,
+            descricao,
+            desafio_dias(
+              numero_dia, titulo, cafe_manha, lanche_manha, almoco,
+              lanche_tarde, jantar, ceia, lista_alimentos, receita, liberado
+            )
+          `)
+          .eq('is_active', true),
+      ]);
+      const ctx = {
+        programs: assocRes.data || [],
+        progress: progressRes.data || [],
+        challenges: challengeRes.data || [],
+      };
+      setPlatformContext(ctx);
+      return ctx;
+    } catch (err) {
+      console.error('[NutriIA] Error loading platform context:', err);
+      return { programs: [], progress: [], challenges: [] };
+    }
+  }, [user, platformContext]);
+
   const loadHistory = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -45,11 +91,13 @@ export function useNutriChat() {
         .order('criado_em', { ascending: true });
       if (error) console.error('[NutriIA] Load history error:', error);
       if (data) setMessages(data as ChatMessage[]);
+      // Pre-load platform context
+      loadPlatformContext();
     } catch (err) {
       console.error('[NutriIA] Unexpected error loading history:', err);
     }
     setLoading(false);
-  }, [user]);
+  }, [user, loadPlatformContext]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!user || !profile || sending) return;
