@@ -303,9 +303,9 @@ export default function AppHome() {
 
         {/* All Programs Grid — glassmorphism cards */}
         {allProducts.length > 1 && (
-          <motion.section className="px-8 py-12 md:px-16" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <h2 className="mb-6 font-display text-3xl font-semibold text-foreground">Todos os Programas</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.section className="px-4 py-8 md:px-16 md:py-12" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <h2 className="mb-4 md:mb-6 font-display text-2xl md:text-3xl font-semibold text-foreground">Todos os Programas</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {allProducts.map((p, i) => {
                 const hasAccess = isAdmin || !!accessMap[p.id];
                 const modCount = p.modules?.length || 0;
