@@ -265,6 +265,31 @@ export default function ProfilePage() {
             ) : <p className="text-muted-foreground mb-12">Nenhum programa ativo.</p>}
           </motion.div>
 
+          {/* Reminders Settings */}
+          <motion.div className="mb-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}>
+            <h2 className="font-display text-2xl font-semibold mb-4 text-foreground">Lembretes</h2>
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                    <Droplets className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Lembrete de água</p>
+                    <p className="text-xs text-muted-foreground">Notificação a cada 1 hora para se hidratar</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={waterReminder}
+                  onCheckedChange={(checked) => {
+                    setWaterReminder(checked);
+                    setWaterReminderEnabled(checked);
+                  }}
+                />
+              </div>
+            </div>
+          </motion.div>
+
           {completedHistory.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
               <h2 className="font-display text-2xl font-semibold mb-6 text-foreground">Aulas Concluídas</h2>

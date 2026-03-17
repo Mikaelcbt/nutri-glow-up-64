@@ -295,6 +295,9 @@ export default function AppHome() {
           </section>
         )}
 
+        {/* Water Reminder Banner */}
+        <WaterReminderBanner />
+
         {/* Habits Checklist */}
         <HabitsChecklist />
 
