@@ -210,7 +210,7 @@ export default function AppHome() {
 
         {/* Hero with parallax */}
         {featuredProduct ? (
-          <section ref={heroRef} className="relative h-[80vh] w-full overflow-hidden">
+          <section ref={heroRef} className="relative h-[60vh] md:h-[80vh] w-full overflow-hidden">
             {/* Parallax background image */}
             <motion.div className="absolute inset-0" style={{ y: heroImageY }} initial={{ scale: 1.05, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }}>
               <img src={featuredProduct.imagem_capa_url || '/placeholder.svg'} alt={featuredProduct.nome} className="h-[calc(100%+150px)] w-full object-cover object-center" />
