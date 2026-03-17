@@ -348,36 +348,35 @@ export default function AppHome() {
                   className="flex-shrink-0 snap-center" style={{ width: '190px' }}
                 >
                   {hasAccess ? (
-                    <Link to={`/app/programa/${p.slug}`} className="group block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105" style={{ height: '280px' }}>
+                    <Link to={`/app/programa/${p.slug}`} className="group block overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_30px_-4px_hsl(var(--primary)/0.3)]" style={{ height: '280px', borderRadius: '12px' }}>
                       <div className="relative h-full w-full">
                         {p.imagem_capa_url ? (
-                          <img src={p.imagem_capa_url} alt={p.nome} className="h-full w-full object-cover" />
+                          <img src={p.imagem_capa_url} alt={p.nome} className="absolute inset-0 h-full w-full object-cover" />
                         ) : (
-                          <div className="h-full w-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
                             <BookOpen className="h-10 w-10 text-primary/40" />
                           </div>
                         )}
-                        <div className="absolute inset-x-0 bottom-0 bg-[#0d1a0f]/90 px-3 py-3">
-                          <h3 className="text-white font-bold text-sm leading-tight line-clamp-2">{p.nome}</h3>
+                        <div className="absolute inset-x-0 bottom-0 p-3" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%)' }}>
+                          <h3 className="text-white font-bold leading-tight line-clamp-2" style={{ fontSize: '16px' }}>{p.nome}</h3>
                         </div>
                       </div>
                     </Link>
                   ) : (
-                    <button onClick={() => setRequestModal(p.nome)} className="group block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 text-left w-full" style={{ height: '280px' }}>
+                    <button onClick={() => setRequestModal(p.nome)} className="group block overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_30px_-4px_hsl(var(--primary)/0.3)] text-left w-full" style={{ height: '280px', borderRadius: '12px' }}>
                       <div className="relative h-full w-full">
                         {p.imagem_capa_url ? (
-                          <img src={p.imagem_capa_url} alt={p.nome} className="h-full w-full object-cover" />
+                          <img src={p.imagem_capa_url} alt={p.nome} className="absolute inset-0 h-full w-full object-cover" />
                         ) : (
-                          <div className="h-full w-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
                             <BookOpen className="h-10 w-10 text-primary/40" />
                           </div>
                         )}
-                        {/* Lock overlay on hover */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
                           <Lock className="h-10 w-10 text-white" />
                         </div>
-                        <div className="absolute inset-x-0 bottom-0 bg-[#0d1a0f]/90 px-3 py-3">
-                          <h3 className="text-white font-bold text-sm leading-tight line-clamp-2">{p.nome}</h3>
+                        <div className="absolute inset-x-0 bottom-0 p-3" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%)' }}>
+                          <h3 className="text-white font-bold leading-tight line-clamp-2" style={{ fontSize: '16px' }}>{p.nome}</h3>
                         </div>
                       </div>
                     </button>
