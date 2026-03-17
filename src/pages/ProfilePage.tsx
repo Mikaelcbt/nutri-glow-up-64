@@ -27,6 +27,7 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [daysSince, setDaysSince] = useState(0);
   const [waterReminder, setWaterReminder] = useState(isWaterReminderEnabled());
+  const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem('push_notifications_enabled') !== 'false');
 
   useEffect(() => { if (user) loadAll(); }, [user]);
 
