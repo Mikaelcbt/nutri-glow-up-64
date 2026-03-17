@@ -188,10 +188,10 @@ export default function AppHome() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="px-8 py-8 md:px-16 space-y-6">
-          <Skeleton className="h-[60vh] w-full rounded-2xl shimmer" />
-          <div className="flex gap-5">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-80 w-52 rounded-2xl flex-shrink-0 shimmer" />)}
+        <div className="px-4 py-6 md:px-16 space-y-6">
+          <Skeleton className="h-[50vh] md:h-[60vh] w-full rounded-2xl shimmer" />
+          <div className="flex gap-4 overflow-hidden">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-56 md:h-80 w-40 md:w-52 rounded-2xl flex-shrink-0 shimmer" />)}
           </div>
         </div>
       </AppLayout>
@@ -201,16 +201,16 @@ export default function AppHome() {
   return (
     <AppLayout>
       <AnimatedPage>
-        <motion.div className="px-8 pt-6 md:px-16" variants={fadeInUp}>
-          <h2 className="text-lg text-muted-foreground">
+        <motion.div className="px-4 pt-4 md:px-16 md:pt-6" variants={fadeInUp}>
+          <h2 className="text-base md:text-lg text-muted-foreground">
             {getGreeting()}, <span className="text-foreground font-semibold">{profile?.nome_completo || 'Usuário'}</span>! 👋
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">Continue sua jornada de transformação.</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">Continue sua jornada de transformação.</p>
         </motion.div>
 
         {/* Hero with parallax */}
         {featuredProduct ? (
-          <section ref={heroRef} className="relative h-[80vh] w-full overflow-hidden">
+          <section ref={heroRef} className="relative h-[60vh] md:h-[80vh] w-full overflow-hidden">
             {/* Parallax background image */}
             <motion.div className="absolute inset-0" style={{ y: heroImageY }} initial={{ scale: 1.05, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }}>
               <img src={featuredProduct.imagem_capa_url || '/placeholder.svg'} alt={featuredProduct.nome} className="h-[calc(100%+150px)] w-full object-cover object-center" />
@@ -226,33 +226,33 @@ export default function AppHome() {
             {/* Floating particles */}
             <FloatingParticles />
 
-            <div className="relative flex h-full items-center px-8 md:px-16">
-              <motion.div className="max-w-xl space-y-6" variants={staggerContainer} initial="initial" animate="animate">
-                <motion.span variants={fadeInUp} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent-foreground">
+            <div className="relative flex h-full items-center px-4 md:px-16">
+              <motion.div className="max-w-xl space-y-4 md:space-y-6" variants={staggerContainer} initial="initial" animate="animate">
+                <motion.span variants={fadeInUp} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 md:px-4 md:py-1.5 text-[10px] md:text-xs font-semibold uppercase tracking-widest text-accent-foreground">
                   {featuredHasAccess ? '✦ Programa em destaque' : 'Programa disponível'}
                 </motion.span>
-                <motion.h1 variants={fadeInUp} className="font-display text-5xl leading-tight text-foreground md:text-7xl font-semibold">{featuredProduct.nome}</motion.h1>
-                <motion.p variants={fadeInUp} className="text-base leading-relaxed text-muted-foreground md:text-lg">{featuredProduct.descricao}</motion.p>
-                <motion.div variants={fadeInUp} className="flex items-center gap-6 text-sm text-muted-foreground">
+                <motion.h1 variants={fadeInUp} className="font-display text-3xl leading-tight text-foreground md:text-7xl font-semibold">{featuredProduct.nome}</motion.h1>
+                <motion.p variants={fadeInUp} className="text-sm leading-relaxed text-muted-foreground md:text-lg line-clamp-3 md:line-clamp-none">{featuredProduct.descricao}</motion.p>
+                <motion.div variants={fadeInUp} className="flex items-center gap-4 md:gap-6 text-xs md:text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5"><Layers className="h-4 w-4" /> {animatedModules} módulos</span>
                   <span className="flex items-center gap-1.5"><BookOpen className="h-4 w-4" /> {animatedLessons} aulas</span>
                 </motion.div>
-                <motion.div variants={fadeInUp} className="flex gap-3">
+                <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-3">
                   {featuredHasAccess ? (
                     <>
-                      <Button asChild size="lg" className="btn-ripple h-12 px-8 text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                      <Button asChild size="lg" className="btn-ripple h-12 px-6 md:px-8 text-sm md:text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}><Play className="mr-2 h-5 w-5" /> Continuar programa</Link>
                       </Button>
-                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold border-primary text-primary hover:bg-accent active:scale-[0.97] transition-all duration-300">
+                      <Button asChild variant="outline" size="lg" className="h-12 px-6 md:px-8 text-sm md:text-base font-semibold border-primary text-primary hover:bg-accent active:scale-[0.97] transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}>Saiba mais</Link>
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Button size="lg" onClick={() => setRequestModal(featuredProduct.nome)} className="btn-ripple h-12 px-8 text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                      <Button size="lg" onClick={() => setRequestModal(featuredProduct.nome)} className="btn-ripple h-12 px-6 md:px-8 text-sm md:text-base font-semibold bg-gradient-to-r from-primary to-[hsl(142_72%_37%)] shadow-green-glow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                         Solicitar acesso
                       </Button>
-                      <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold active:scale-[0.97] transition-all duration-300">
+                      <Button asChild variant="outline" size="lg" className="h-12 px-6 md:px-8 text-sm md:text-base font-semibold active:scale-[0.97] transition-all duration-300">
                         <Link to={`/app/programa/${featuredProduct.slug}`}>Ver detalhes</Link>
                       </Button>
                     </>
@@ -303,9 +303,9 @@ export default function AppHome() {
 
         {/* All Programs Grid — glassmorphism cards */}
         {allProducts.length > 1 && (
-          <motion.section className="px-8 py-12 md:px-16" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <h2 className="mb-6 font-display text-3xl font-semibold text-foreground">Todos os Programas</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.section className="px-4 py-8 md:px-16 md:py-12" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <h2 className="mb-4 md:mb-6 font-display text-2xl md:text-3xl font-semibold text-foreground">Todos os Programas</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {allProducts.map((p, i) => {
                 const hasAccess = isAdmin || !!accessMap[p.id];
                 const modCount = p.modules?.length || 0;
@@ -353,22 +353,22 @@ export default function AppHome() {
 
         {/* Module Carousel — glassmorphism */}
         {modules.length > 0 && (
-          <motion.section className="px-8 py-12 md:px-16" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="font-display text-3xl font-semibold text-foreground">Módulos do Programa</h2>
+          <motion.section className="px-4 py-8 md:px-16 md:py-12" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <div className="mb-4 md:mb-6 flex items-center justify-between">
+              <h2 className="font-display text-2xl md:text-3xl font-semibold text-foreground">Módulos do Programa</h2>
               <div className="flex gap-2">
                 <button onClick={() => scrollCarousel('left')} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronLeft className="h-5 w-5" /></button>
                 <button onClick={() => scrollCarousel('right')} className="rounded-full border border-border p-2 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-300"><ChevronRight className="h-5 w-5" /></button>
               </div>
             </div>
-            <div ref={carouselRef} className="flex gap-5 overflow-x-auto scroll-smooth pb-4" style={{ scrollbarWidth: 'none' }}>
+            <div ref={carouselRef} className="flex gap-4 md:gap-5 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory md:snap-none" style={{ scrollbarWidth: 'none' }}>
               {modules.map((mod, i) => {
                 const color = mod.cor_destaque || moduleColors[i % moduleColors.length];
                 return (
                   <motion.div key={mod.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}>
                     <Link to={`/app/modulo/${mod.id}`}
-                      className="group relative flex-shrink-0 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-3 hover:shadow-green-glow block"
-                      style={{ width: 200, height: 320 }}
+                      className="group relative flex-shrink-0 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-3 hover:shadow-green-glow block snap-center"
+                      style={{ width: 'clamp(160px, 45vw, 200px)', height: 'clamp(220px, 60vw, 320px)' }}
                     >
                       {(mod.imagem_url || featuredProduct?.imagem_capa_url) ? (
                         <img
@@ -405,7 +405,7 @@ export default function AppHome() {
         )}
 
         {/* Footer */}
-        <footer className="border-t border-border bg-card/50 px-8 py-6 md:px-16 mt-8">
+        <footer className="border-t border-border bg-card/50 px-4 py-6 md:px-16 mt-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>© 2026 JP NutriCare. Todos os direitos reservados.</span>
             <span>v1.0.0</span>

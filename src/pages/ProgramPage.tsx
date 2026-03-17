@@ -104,11 +104,11 @@ export default function ProgramPage() {
         <Breadcrumb items={[{ label: 'Início', href: '/app' }, { label: product.nome }]} />
 
         {/* Header */}
-        <section className="relative overflow-hidden" style={{ height: 350 }}>
+        <section className="relative overflow-hidden" style={{ height: 'clamp(200px, 40vw, 350px)' }}>
           <motion.img src={product.imagem_capa_url || '/placeholder.svg'} alt={product.nome} className="h-full w-full object-cover" initial={{ scale: 1.05 }} animate={{ scale: 1 }} transition={{ duration: 0.8 }} />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
           <motion.div className="absolute bottom-8 left-8 md:left-16 space-y-4" variants={staggerContainer} initial="initial" animate="animate">
-            <motion.h1 variants={fadeInUp} className="font-display text-5xl md:text-6xl font-semibold text-foreground">{product.nome}</motion.h1>
+            <motion.h1 variants={fadeInUp} className="font-display text-3xl md:text-6xl font-semibold text-foreground">{product.nome}</motion.h1>
             <motion.p variants={fadeInUp} className="max-w-xl text-muted-foreground">{product.descricao}</motion.p>
             {hasAccess ? (
               <motion.div variants={fadeInUp} className="flex items-center gap-4 max-w-md">
@@ -127,9 +127,9 @@ export default function ProgramPage() {
         </section>
 
         {/* Modules */}
-        <section className="px-8 py-12 md:px-16">
-          <motion.h2 variants={fadeInUp} initial="initial" animate="animate" className="mb-8 font-display text-3xl font-semibold text-foreground">Módulos</motion.h2>
-          <div className="space-y-4">
+        <section className="px-4 py-8 md:px-16 md:py-12">
+          <motion.h2 variants={fadeInUp} initial="initial" animate="animate" className="mb-6 md:mb-8 font-display text-2xl md:text-3xl font-semibold text-foreground">Módulos</motion.h2>
+          <div className="space-y-3 md:space-y-4">
             {modules.map((mod, i) => {
               const moduleAccessible = hasAccess || isAdmin;
               return (

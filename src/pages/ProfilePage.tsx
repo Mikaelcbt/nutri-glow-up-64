@@ -166,9 +166,9 @@ export default function ProfilePage() {
     <AppLayout>
       <AnimatedPage>
         {/* Banner */}
-        <div className="h-32 bg-gradient-to-r from-primary/20 via-accent to-primary/10 relative" />
+        <div className="h-28 md:h-32 bg-gradient-to-r from-primary/20 via-accent to-primary/10 relative" />
         
-        <div className="mx-auto max-w-2xl px-4 -mt-16">
+        <div className="mx-auto max-w-2xl px-4 -mt-14 md:-mt-16 pb-8">
           <motion.div
             className="text-center mb-12"
             variants={staggerContainer}

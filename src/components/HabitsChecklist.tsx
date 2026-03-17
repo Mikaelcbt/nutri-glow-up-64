@@ -98,7 +98,7 @@ export default function HabitsChecklist() {
 
   return (
     <motion.section
-      className="px-8 py-8 md:px-16"
+      className="px-4 py-6 md:px-16 md:py-8"
       variants={fadeInUp}
       initial="initial"
       animate="animate"
