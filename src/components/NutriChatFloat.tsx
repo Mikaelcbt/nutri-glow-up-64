@@ -43,7 +43,7 @@ export default function NutriChatFloat() {
       <AnimatePresence>
         {open && (
           <motion.div
-            className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] h-[520px] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-[170px] md:bottom-24 right-4 md:right-6 z-50 w-[380px] max-w-[calc(100vw-32px)] h-[520px] max-h-[calc(100vh-200px)] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden"
             initial={{ opacity: 0, x: 60, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 60, scale: 0.95 }}

@@ -314,9 +314,27 @@ input:focus, textarea:focus, select:focus {
   }
   
   /* Prevent horizontal overflow */
-  body {
+  html, body {
     overflow-x: hidden;
+    max-width: 100vw;
   }
+
+  /* Consistent padding and spacing */
+  main {
+    min-height: 0;
+  }
+  
+  /* Limit title sizes */
+  h1 { font-size: clamp(1.25rem, 5vw, 1.75rem) !important; }
+  h2 { font-size: clamp(1.125rem, 4vw, 1.5rem) !important; }
+
+  /* Minimum font size */
+  p, span, li, td, th, label, a {
+    font-size: max(0.875rem, inherit);
+  }
+
+  /* Generous spacing between clickable elements */
+  .space-y-1 > * + * { margin-top: 0.5rem; }
 }
 
 /* Admin mobile card-style tables */
