@@ -148,9 +148,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Button variant="ghost" size="sm" className="h-10 w-10 p-0" onClick={() => setMobileMenuOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <Link to="/app" className="font-display text-lg font-semibold text-foreground flex items-center gap-1">
-              <span className="text-base">🌿</span>
-              JP <span className="logo-shimmer">N</span>utriCare
+            <Link to="/app" className="flex items-center">
+              <img src="/images/logo-jp-nutricare.png" alt="JP NutriCare" className="h-9 object-contain" />
             </Link>
           </div>
           <div className="flex items-center gap-1">
