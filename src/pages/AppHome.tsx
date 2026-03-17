@@ -380,7 +380,7 @@ export default function AppHome() {
                         </div>
                       </div>
                     </button>
-                  )
+                  )}
                 </motion.div>
               );
             })}
