@@ -289,6 +289,31 @@ export default function ProfilePage() {
                   }}
                 />
               </div>
+              {isPushSupported() && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                      <Bell className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Notificações push</p>
+                      <p className="text-xs text-muted-foreground">Receber alertas mesmo com o app fechado</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={pushEnabled}
+                    onCheckedChange={async (checked) => {
+                      setPushEnabled(checked);
+                      localStorage.setItem('push_notifications_enabled', String(checked));
+                      if (checked && user) {
+                        await subscribeToPush(user.id);
+                      } else if (!checked && user) {
+                        await unsubscribeFromPush(user.id);
+                      }
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
 
