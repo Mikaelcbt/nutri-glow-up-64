@@ -75,7 +75,8 @@ export default function AdminAssociations() {
   };
 
   const filtered = users.filter(u =>
-    u.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase())
+    u.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
