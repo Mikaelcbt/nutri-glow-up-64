@@ -129,7 +129,7 @@ export default function AdminAssociations() {
             >
               <div>
                 <p className="text-sm font-semibold text-foreground truncate">{user.nome_completo || 'Sem nome'}</p>
-                <p className="text-[11px] text-muted-foreground">{user.id.slice(0, 8)}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{user.email || 'Sem e-mail'}</p>
               </div>
               {products.map(prod => {
                 const assoc = getAssoc(user.id, prod.id);
