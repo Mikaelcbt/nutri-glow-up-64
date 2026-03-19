@@ -110,7 +110,7 @@ export default function AdminAssociations() {
       <div className="rounded-2xl border border-border overflow-hidden">
         {/* Header */}
         <div className="grid gap-0 bg-secondary/80 p-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-          style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
+          style={{ gridTemplateColumns: `minmax(300px, 1fr) repeat(${products.length}, 1fr)` }}
         >
           <div>Usuário</div>
           {products.map(p => <div key={p.id} className="text-center">{p.nome}</div>)}
@@ -125,7 +125,7 @@ export default function AdminAssociations() {
               animate={{ opacity: 1 }}
               transition={{ delay: Math.min(i * 0.02, 0.5) }}
               className="grid gap-0 p-4 items-center hover:bg-secondary/30 transition-colors"
-              style={{ gridTemplateColumns: `200px repeat(${products.length}, 1fr)` }}
+              style={{ gridTemplateColumns: `minmax(300px, 1fr) repeat(${products.length}, 1fr)` }}
             >
               <div>
                 <p className="text-sm font-semibold text-foreground truncate">{user.nome_completo || 'Sem nome'}</p>
