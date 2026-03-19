@@ -8,7 +8,7 @@ import { Search, Loader2, Check, X, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Product { id: string; nome: string; }
-interface UserProfile { id: string; nome_completo: string; }
+interface UserProfile { id: string; nome_completo: string; email: string; }
 interface Association { id: string; user_id: string; product_id: string; status: string; data_inicio: string; }
 
 export default function AdminAssociations() {
@@ -25,7 +25,7 @@ export default function AdminAssociations() {
     setLoading(true);
     const [{ data: prods }, { data: profiles }, { data: assocs }] = await Promise.all([
       supabase.from('products').select('id, nome').order('nome'),
-      supabase.from('profiles').select('id, nome_completo').order('nome_completo'),
+      supabase.from('profiles').select('id, nome_completo, email').order('nome_completo'),
       supabase.from('associacoes').select('id, user_id, product_id, status, data_inicio'),
     ]);
     setProducts(prods ?? []);
@@ -75,7 +75,8 @@ export default function AdminAssociations() {
   };
 
   const filtered = users.filter(u =>
-    u.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase())
+    u.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -90,7 +91,7 @@ export default function AdminAssociations() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome..."
+            placeholder="Buscar por nome ou e-mail..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 bg-secondary border-border"
@@ -128,7 +129,7 @@ export default function AdminAssociations() {
             >
               <div>
                 <p className="text-sm font-semibold text-foreground truncate">{user.nome_completo || 'Sem nome'}</p>
-                <p className="text-[11px] text-muted-foreground">{user.id.slice(0, 8)}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{user.email || 'Sem e-mail'}</p>
               </div>
               {products.map(prod => {
                 const assoc = getAssoc(user.id, prod.id);
