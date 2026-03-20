@@ -8,7 +8,7 @@ import { Search, Loader2, Check, X, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Product { id: string; nome: string; }
-interface UserProfile { id: string; nome_completo: string; email: string; }
+interface UserProfile { id: string; nome_completo: string; email?: string; }
 interface Association { id: string; user_id: string; product_id: string; status: string; data_inicio: string; }
 
 export default function AdminAssociations() {
