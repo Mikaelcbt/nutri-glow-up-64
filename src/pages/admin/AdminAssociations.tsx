@@ -25,7 +25,7 @@ export default function AdminAssociations() {
     setLoading(true);
     const [{ data: prods }, { data: profiles }, { data: assocs }] = await Promise.all([
       supabase.from('products').select('id, nome').order('nome'),
-      supabase.from('profiles').select('id, nome_completo, email').order('nome_completo'),
+      supabase.from('profiles').select('id, nome_completo').order('nome_completo'),
       supabase.from('associacoes').select('id, user_id, product_id, status, data_inicio'),
     ]);
     setProducts(prods ?? []);
