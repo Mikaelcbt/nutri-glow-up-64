@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedPage, fadeInUp, staggerContainer } from '@/components/AnimatedPage';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useXPGain } from '@/components/XPToast';
+import { XP_VALUES, useUserStats } from '@/hooks/useUserStats';
 
 interface LessonData {
   id: string; titulo: string; descricao: string; conteudo: string;
@@ -27,6 +29,8 @@ export default function LessonPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { showXP, GainOverlay } = useXPGain();
+  const { refreshStats } = useUserStats();
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [completed, setCompleted] = useState(false);
   const [marking, setMarking] = useState(false);
@@ -40,8 +44,8 @@ export default function LessonPage() {
   const [nextModuleId, setNextModuleId] = useState<string | null>(null);
   const [showModuleComplete, setShowModuleComplete] = useState(false);
   const [showProgramComplete, setShowProgramComplete] = useState(false);
-  const [autoAdvanceTimer, setAutoAdvanceTimer] = useState<number | null>(null);
-  const [countdown, setCountdown] = useState(5);
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const [showCheckAnim, setShowCheckAnim] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
@@ -50,12 +54,14 @@ export default function LessonPage() {
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => { if (id) loadLesson(); }, [id, user]);
-  useEffect(() => { return () => { if (autoAdvanceTimer) clearInterval(autoAdvanceTimer); }; }, [autoAdvanceTimer]);
+  // Cleanup timer on unmount
+  useEffect(() => { return () => { if (autoAdvanceTimerRef.current) clearInterval(autoAdvanceTimerRef.current); }; }, []);
 
   const loadLesson = async () => {
     setLesson(null); setShowModuleComplete(false); setShowProgramComplete(false);
-    setShowCheckAnim(false); setCountdown(5); setAccessChecked(false);
-    if (autoAdvanceTimer) clearInterval(autoAdvanceTimer);
+    setShowCheckAnim(false); setCountdown(0); setAccessChecked(false);
+    // Limpa timer de navegação automática da aula anterior
+    if (autoAdvanceTimerRef.current) { clearInterval(autoAdvanceTimerRef.current); autoAdvanceTimerRef.current = null; }
     try {
       const { data, error } = await supabase.from('lessons').select('*').eq('id', id).maybeSingle();
       if (error) { toast.error('Erro ao carregar aula: ' + error.message); return; }
@@ -111,7 +117,8 @@ export default function LessonPage() {
   };
 
   const markComplete = async () => {
-    if (!user || !lesson) return;
+    // Guard: impede double-submit e re-conclusão
+    if (!user || !lesson || completed || marking) return;
     setMarking(true);
     try {
       const { error } = await supabase.from('rastreamento_progresso').upsert(
@@ -121,6 +128,8 @@ export default function LessonPage() {
       if (error) { toast.error('Erro ao salvar progresso: ' + error.message); return; }
       setCompleted(true); setShowCheckAnim(true);
       setCompletedLessons(prev => new Set(prev).add(lesson.id));
+      showXP(XP_VALUES.LESSON, 'Aula concluída!');
+      refreshStats();
       setTimeout(() => setShowCheckAnim(false), 2000);
       toast.success('Aula concluída! 🎉');
 
@@ -142,9 +151,19 @@ export default function LessonPage() {
           }
         }
       } else if (siblings.next) {
-        let c = 5; setCountdown(c);
-        const timer = window.setInterval(() => { c--; setCountdown(c); if (c <= 0) { clearInterval(timer); navigate(`/app/aula/${siblings.next}`); } }, 1000);
-        setAutoAdvanceTimer(timer);
+        // Auto-advance com countdown — usa ref para evitar leaks
+        let c = 5;
+        setCountdown(c);
+        if (autoAdvanceTimerRef.current) clearInterval(autoAdvanceTimerRef.current);
+        autoAdvanceTimerRef.current = window.setInterval(() => {
+          c--;
+          setCountdown(c);
+          if (c <= 0) {
+            if (autoAdvanceTimerRef.current) clearInterval(autoAdvanceTimerRef.current);
+            autoAdvanceTimerRef.current = null;
+            navigate(`/app/aula/${siblings.next}`);
+          }
+        }, 1000);
       }
     } finally { setMarking(false); }
   };
@@ -214,6 +233,7 @@ export default function LessonPage() {
 
   return (
     <AppLayout>
+      <GainOverlay />
       <AnimatedPage>
         <Breadcrumb items={[
           { label: 'Início', href: '/app' },
@@ -269,10 +289,19 @@ export default function LessonPage() {
                 </Button>
               ) : <div />}
 
-              {autoAdvanceTimer && countdown > 0 && siblings.next && (
+              {countdown > 0 && siblings.next && (
                 <motion.span className="text-xs text-muted-foreground ml-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   Próxima em {countdown}s...{' '}
-                  <button onClick={() => { if (autoAdvanceTimer) clearInterval(autoAdvanceTimer); setAutoAdvanceTimer(null); }} className="text-primary underline">cancelar</button>
+                  <button
+                    onClick={() => {
+                      if (autoAdvanceTimerRef.current) clearInterval(autoAdvanceTimerRef.current);
+                      autoAdvanceTimerRef.current = null;
+                      setCountdown(0);
+                    }}
+                    className="text-primary underline"
+                  >
+                    cancelar
+                  </button>
                 </motion.span>
               )}
             </motion.div>

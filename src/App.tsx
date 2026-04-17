@@ -34,7 +34,9 @@ import AdminHabits from "./pages/admin/AdminHabits";
 import ChallengesPage from "./pages/ChallengesPage";
 import ChallengeDetailPage from "./pages/ChallengeDetailPage";
 import ChallengeDayPage from "./pages/ChallengeDayPage";
+import RankingPage from "./pages/RankingPage";
 import NotFound from "./pages/NotFound";
+import { UserStatsProvider } from "./hooks/useUserStats";
 
 const queryClient = new QueryClient();
 
@@ -44,9 +46,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <ScrollToTop />
-          <InstallBanner />
-          <Routes>
+          <UserStatsProvider>
+            <ScrollToTop />
+            <InstallBanner />
+            <Routes>
             {/* Public */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
@@ -67,6 +70,7 @@ const App = () => (
             <Route path="/app/desafios" element={<ProtectedRoute><ChallengesPage /></ProtectedRoute>} />
             <Route path="/app/desafios/:id" element={<ProtectedRoute><ChallengeDetailPage /></ProtectedRoute>} />
             <Route path="/app/desafios/:id/dia/:numero" element={<ProtectedRoute><ChallengeDayPage /></ProtectedRoute>} />
+            <Route path="/app/ranking" element={<ProtectedRoute><RankingPage /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -82,7 +86,8 @@ const App = () => (
             <Route path="/admin/habitos" element={<AdminRoute><AdminHabits /></AdminRoute>} />
 
             <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
+          </UserStatsProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

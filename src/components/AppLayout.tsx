@@ -1,17 +1,20 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield, Sparkles, Trophy, X } from 'lucide-react';
+import { Home, Users, ArrowLeftRight, FileText, User, LogOut, Menu, Shield, Sparkles, Trophy, X, Medal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NutriChatFloat from '@/components/NutriChatFloat';
 import NotificationBell from '@/components/NotificationBell';
+import StreakXPBar from '@/components/StreakXPBar';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const navItems = [
   { title: 'Início', path: '/app', icon: Home },
   { title: 'Comunidade', path: '/app/comunidade', icon: Users },
   { title: 'Desafios', path: '/app/desafios', icon: Trophy },
+  { title: 'Ranking', path: '/app/ranking', icon: Medal },
   { title: 'Antes & Depois', path: '/app/antes-e-depois', icon: ArrowLeftRight },
   { title: 'Materiais', path: '/app/materiais', icon: FileText },
   { title: 'NutriIA', path: '/app/nutricionista-ia', icon: Sparkles },
@@ -29,6 +32,7 @@ const bottomNavItems = [
 
 // Secondary items accessible via hamburger menu on mobile
 const secondaryNavItems = [
+  { title: 'Ranking', path: '/app/ranking', icon: Medal },
   { title: 'Antes & Depois', path: '/app/antes-e-depois', icon: ArrowLeftRight },
   { title: 'Materiais', path: '/app/materiais', icon: FileText },
 ];
@@ -143,35 +147,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="flex h-14 items-center justify-between border-b border-border px-4 md:hidden bg-card sticky top-0 z-30">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-10 w-10 p-0" onClick={() => setMobileMenuOpen(true)}>
-              <Menu className="h-5 w-5" />
-            </Button>
-            <Link to="/app" className="flex items-center">
-              <img src="/images/logo-jp-nutricare.png" alt="JP NutriCare" className="h-9 object-contain" />
-            </Link>
+        <header className="flex flex-col border-b border-border md:hidden bg-card sticky top-0 z-30">
+          <div className="flex h-14 items-center justify-between px-4">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-10 w-10 p-0" onClick={() => setMobileMenuOpen(true)}>
+                <Menu className="h-5 w-5" />
+              </Button>
+              <Link to="/app" className="flex items-center">
+                <img src="/images/logo-jp-nutricare.png" alt="JP NutriCare" className="h-9 object-contain" />
+              </Link>
+            </div>
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <NotificationBell />
+              <Link to="/app/perfil">
+                <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-primary/60">
+                  <Avatar className="h-8 w-8 border-2 border-card">
+                    {profile?.avatar_url ? (
+                      <AvatarImage src={profile.avatar_url} alt={profile.nome_completo || ''} className="object-cover" />
+                    ) : null}
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                      {initial}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </Link>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <NotificationBell />
-            <Link to="/app/perfil">
-              <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-primary/60">
-                <Avatar className="h-8 w-8 border-2 border-card">
-                  {profile?.avatar_url ? (
-                    <AvatarImage src={profile.avatar_url} alt={profile.nome_completo || ''} className="object-cover" />
-                  ) : null}
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            </Link>
+          {/* Streak + XP bar mobile */}
+          <div className="flex justify-center pb-2 px-4">
+            <StreakXPBar />
           </div>
         </header>
 
-        {/* Desktop notification bell */}
-        <div className="hidden md:flex h-14 items-center justify-end border-b border-border px-6 bg-card">
-          <NotificationBell />
+        {/* Desktop top bar */}
+        <div className="hidden md:flex h-14 items-center justify-between border-b border-border px-6 bg-card">
+          <StreakXPBar />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <NotificationBell />
+          </div>
         </div>
 
         <main className="flex-1 scroll-smooth pb-20 md:pb-0">{children}</main>

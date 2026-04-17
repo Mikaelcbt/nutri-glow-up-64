@@ -17,6 +17,7 @@ interface DayData {
   numero_dia: number;
   titulo: string;
   video_url: string;
+  treino_url: string;
   pdf_url: string;
   alimentos: string;
   liberado: boolean;
@@ -122,10 +123,17 @@ export default function AdminChallengeDayEdit() {
       payload.imagem_url = day.imagem_url || '';
     }
 
+    // Only include treino_url if the column exists
+    if (day.treino_url !== undefined) {
+      payload.treino_url = day.treino_url || '';
+    }
+
     const { error } = await supabase.from('desafio_dias').update(payload).eq('id', day.id);
 
     if (error) {
-      if (error.message?.includes('imagem_url')) {
+      if (error.message?.includes('treino_url')) {
+        toast.error('Execute no banco: ALTER TABLE desafio_dias ADD COLUMN treino_url TEXT DEFAULT \'\';');
+      } else if (error.message?.includes('imagem_url')) {
         toast.error('A coluna imagem_url não existe na tabela desafio_dias. Adicione-a no banco: ALTER TABLE desafio_dias ADD COLUMN imagem_url TEXT DEFAULT \'\';');
       } else {
         toast.error('Erro ao salvar: ' + error.message);
@@ -228,6 +236,24 @@ export default function AdminChallengeDayEdit() {
                 <div className="mt-2 aspect-video rounded-lg overflow-hidden border border-border">
                   <iframe src={`https://www.youtube.com/embed/${getYouTubeId(day.video_url)}`} className="w-full h-full" allowFullScreen />
                 </div>
+              )}
+            </div>
+
+            <div>
+              <Label>URL do Treino do Dia <span className="text-muted-foreground font-normal">(opcional — aparece como botão para o aluno)</span></Label>
+              <Input
+                value={day.treino_url || ''}
+                onChange={e => update('treino_url', e.target.value)}
+                placeholder="YouTube, Vimeo ou link direto do treino"
+                className="mt-1"
+              />
+              {day.treino_url && getYouTubeId(day.treino_url) && (
+                <div className="mt-2 aspect-video rounded-lg overflow-hidden border border-border">
+                  <iframe src={`https://www.youtube.com/embed/${getYouTubeId(day.treino_url)}`} className="w-full h-full" allowFullScreen />
+                </div>
+              )}
+              {day.treino_url && !getYouTubeId(day.treino_url) && (
+                <p className="text-xs text-muted-foreground mt-1 truncate">🔗 Link externo: {day.treino_url}</p>
               )}
             </div>
           </TabsContent>

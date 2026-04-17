@@ -61,6 +61,51 @@
 }
 
 @layer base {
+  .dark {
+    --background: 150 12% 6%;
+    --foreground: 120 5% 93%;
+
+    --card: 150 10% 9%;
+    --card-foreground: 120 5% 93%;
+
+    --popover: 150 10% 9%;
+    --popover-foreground: 120 5% 93%;
+
+    --primary: 142 65% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 10% 13%;
+    --secondary-foreground: 120 5% 85%;
+
+    --muted: 150 10% 13%;
+    --muted-foreground: 150 5% 52%;
+
+    --accent: 142 35% 14%;
+    --accent-foreground: 142 60% 72%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 150 8% 15%;
+    --input: 150 8% 15%;
+    --ring: 142 65% 48%;
+
+    --sidebar-background: 150 12% 7%;
+    --sidebar-foreground: 120 5% 93%;
+    --sidebar-primary: 142 65% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 35% 14%;
+    --sidebar-accent-foreground: 142 60% 72%;
+    --sidebar-border: 150 8% 13%;
+    --sidebar-ring: 142 65% 48%;
+
+    --shadow-soft: 0 8px 40px rgba(22, 163, 74, 0.15);
+    --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.5);
+    --shadow-premium: 0 8px 40px rgba(22, 163, 74, 0.15);
+  }
+}
+
+@layer base {
   * {
     @apply border-border;
   }
@@ -112,6 +157,16 @@
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
 }
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(150 10% 11%) 25%,
+    hsl(142 30% 16% / 0.5) 50%,
+    hsl(150 10% 11%) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
 
 /* ── Glassmorphism card ── */
 .glass-card {
@@ -120,6 +175,12 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0 8px 32px rgba(22, 163, 74, 0.08);
+}
+
+.dark .glass-card {
+  background: rgba(12, 18, 14, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Floating label for inputs ── */
@@ -237,19 +298,19 @@ input:focus, textarea:focus, select:focus {
 /* ── Rich content styles for challenge day pages ── */
 .rich-content {
   font-family: 'DM Sans', sans-serif;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
 }
 .rich-content h2 {
   font-size: 1rem;
   font-weight: 600;
-  color: #16A34A;
+  color: hsl(var(--primary));
   margin-top: 0.75rem;
   margin-bottom: 0.25rem;
 }
 .rich-content h3 {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #16A34A;
+  color: hsl(var(--primary));
   margin-top: 0.5rem;
   margin-bottom: 0.25rem;
 }
@@ -324,9 +385,9 @@ input:focus, textarea:focus, select:focus {
     min-height: 0;
   }
   
-  /* Limit title sizes */
-  h1 { font-size: clamp(1.25rem, 5vw, 1.75rem) !important; }
-  h2 { font-size: clamp(1.125rem, 4vw, 1.5rem) !important; }
+  /* Limit title sizes on mobile to prevent overflow while preserving editorial scale */
+  h1 { font-size: clamp(2.25rem, 9vw, 3.5rem) !important; }
+  h2 { font-size: clamp(1.75rem, 7vw, 2.5rem) !important; }
 
   /* Minimum font size */
   p, span, li, td, th, label, a {
